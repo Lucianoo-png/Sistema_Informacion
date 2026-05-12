@@ -11,8 +11,10 @@ abrirLayout('Panel Principal', 'panel');
 ?>
 <div class="pag-wrap-lg">
 
-<h1>Panel Principal</h1>
+<div class="page-header">
+    <h1>Panel Principal</h1>
     <p><?= $hoy ?></p>
+</div>
 
 <!-- Estadísticas -->
 <div class="stats-grid">

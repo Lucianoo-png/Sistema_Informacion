@@ -65,5 +65,18 @@ $base = defined('BASE_URL') ? BASE_URL : './';
         </a>
     </nav>
 
+    <!-- ── Usuario + Logout al fondo del sidebar ── -->
+    <div class="sidebar-user">
+        <div class="sidebar-user-avatar">
+            <i class="fa-solid fa-circle-user"></i>
+        </div>
+        <div class="sidebar-user-info">
+            <span class="sidebar-user-name"><?= htmlspecialchars(($_SESSION['nombre'] ?? '') . ' ' . ($_SESSION['apellidos'] ?? '')) ?></span>
+            <span class="sidebar-user-clave"><?= htmlspecialchars($_SESSION['usuario'] ?? '') ?></span>
+        </div>
+    </div>
+    <a href="<?= $base ?>logout" class="sidebar-logout">
+        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+    </a>
     <div class="sidebar-footer">v1.0 — 2026</div>
 </aside>

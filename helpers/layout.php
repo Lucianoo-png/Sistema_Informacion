@@ -37,13 +37,7 @@ function abrirLayout(string $titulo, string $paginaActual): void {
 
     require_once BASE_PATH . 'control/navbar.php';
 
-    echo '<div class="main-content">
-  <div class="topbar-user">
-    <span class="topbar-welcome"><i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> '
-        . htmlspecialchars($usuario . ' ' . $apellido)
-        . ' <small>(' . htmlspecialchars($clave) . ')</small></span>
-    <a href="' . $base . 'logout" class="btn-logout">Cerrar sesión</a>
-  </div>';
+    echo '<div class="main-content">';
 
     // Guardar la ruta JS para cerrarLayout()
     $GLOBALS['_layout_js'] = $jsUrl;

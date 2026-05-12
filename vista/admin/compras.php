@@ -1,54 +1,50 @@
 <?php
 // =====================================================
-// vista/admin/compras.php — Registrar Compra
-// CAMBIO: usa codigoprod VARCHAR(15) como identificador
+// vista/admin/compras.php — Registrar Compra (simplificada)
+// Solo: Proveedor, monto total pagado, nota
+// No requiere detallar los productos recibidos
 // =====================================================
 
 require_once BASE_PATH . 'helpers/layout.php';
-require_once BASE_PATH . 'modelo/Producto.php';
 require_once BASE_PATH . 'modelo/Proveedor.php';
+require_once BASE_PATH . 'control/CompraControlador.php';
 
 $paginaActual = 'compras';
-$productos    = (new Producto())->obtenerTodos();
 $proveedores  = (new Proveedor())->obtenerTodos();
-
-$prodJS = array_values(array_map(fn($p) => [
-    'codigoprod'    => $p['codigoprod'],
-    'nombre'        => $p['nombre'],
-    'precio_compra' => (float)$p['precio_compra'],
-], $productos));
 
 abrirLayout('Compras', 'compras');
 ?>
+
 <div class="pag-wrap">
 
-<div style="max-width:860px;margin:0 auto">
-
-<div class="page-header">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:20px">
-        <div>
-            <h1><i class="fa-solid fa-box-open" style="color:var(--primary)"></i> Registrar Compra</h1>
-            <p style="font-size:13px;color:var(--text-muted)">Mercancía recibida de proveedor o compra directa</p>
-        </div>
-        <a href="compras/historial" class="btn btn-outline btn-sm" style="white-space:nowrap">
-            <i class="fa-solid fa-clock-rotate-left"></i> Ver historial
-        </a>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div class="page-header" style="margin-bottom:0">
+        <h1><i class="fa-solid fa-box-open" style="color:var(--primary)"></i> Registrar Compra</h1>
+        <p>Registra el pago realizado a proveedor o compra directa</p>
     </div>
+    <a href="compras/historial" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-clock-rotate-left"></i> Ver historial
+    </a>
 </div>
 
 <div class="card">
+
+    <!-- Tipo de compra -->
     <div class="form-group">
-        <label>Tipo de Compra</label>
-        <div class="tipo-btns">
-            <button class="tipo-btn active" data-tipo="proveedor"
-                    onclick="ComprasUI.setTipo('proveedor')">De Proveedor</button>
-            <button class="tipo-btn" data-tipo="directa"
-                    onclick="ComprasUI.setTipo('directa')">Compra Directa</button>
+        <label style="font-weight:600">Tipo de Compra</label>
+        <div class="tipo-btns" style="margin-bottom:0">
+            <button class="tipo-btn active" id="btn-tipo-prov" onclick="setTipo('proveedor')">
+                <i class="fa-solid fa-truck"></i> De Proveedor
+            </button>
+            <button class="tipo-btn" id="btn-tipo-dir" onclick="setTipo('directa')">
+                <i class="fa-solid fa-store"></i> Compra Directa
+            </button>
         </div>
     </div>
 
+    <!-- Selector proveedor (solo cuando tipo = proveedor) -->
     <div class="form-group" id="row-proveedor">
-        <label>Proveedor</label>
+        <label><i class="fa-solid fa-truck" style="color:var(--primary)"></i> Proveedor</label>
         <select class="form-control" id="sel-proveedor">
             <option value="">Seleccionar proveedor...</option>
             <?php foreach ($proveedores as $pv): ?>
@@ -57,161 +53,121 @@ abrirLayout('Compras', 'compras');
         </select>
     </div>
 
+    <!-- Monto total pagado -->
     <div class="form-group">
-        <label>Buscar Producto</label>
-        <div class="searchbar">
-            <span class="searchbar-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-            <input type="text" placeholder="Filtrar productos..."
-                   oninput="ComprasUI.filtrar(this.value)">
+        <label><i class="fa-solid fa-money-bill-wave" style="color:var(--primary)"></i>
+            Monto total pagado
+        </label>
+        <div style="display:flex;align-items:center;gap:8px;
+                    border:1.5px solid var(--border);border-radius:8px;
+                    padding:10px 14px;background:#fff" id="wrap-monto">
+            <span style="color:var(--text-muted);font-weight:600">$</span>
+            <input type="number" id="inp-monto" step="0.01" min="0.01"
+                   placeholder="0.00"
+                   style="border:none;outline:none;flex:1;font-size:16px;font-weight:600"
+                   oninput="actualizarTotal()">
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            <i class="fa-solid fa-circle-info"></i>
+            Ingresa el monto exacto que pagaste por la mercancía recibida.
         </div>
     </div>
 
+    <!-- Nota -->
     <div class="form-group">
-        <label>Productos Recibidos</label>
-        <div id="lineas-compra"></div>
-        <button class="btn btn-outline btn-sm" style="margin-top:10px"
-                onclick="ComprasUI.agregarLinea()">+ Agregar producto</button>
+        <label><i class="fa-solid fa-note-sticky" style="color:var(--primary)"></i>
+            Descripción / Nota (opcional)
+        </label>
+        <textarea id="inp-nota" class="form-control"
+                  placeholder="Ej: Pago de refresco Coca-Cola semana 20, factura #123..."
+                  rows="3"></textarea>
     </div>
 
-    <div class="form-group">
-        <label>Nota (opcional)</label>
-        <textarea id="compra-nota" class="form-control" placeholder="Observaciones..."></textarea>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+    <!-- Total + botón -->
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                border-top:1px solid var(--border);padding-top:16px;flex-wrap:wrap;gap:12px">
         <div>
-            <div style="font-size:13px;color:#888">Total de compra</div>
-            <div class="price" style="font-size:22px" id="total-compra">$0.00</div>
+            <div style="font-size:12px;color:var(--text-muted)">Total de compra</div>
+            <div class="price" style="font-size:24px;font-weight:800" id="lbl-total">$0.00</div>
         </div>
-        <button class="btn btn-primary" onclick="ComprasUI.registrar()">Registrar Compra</button>
+        <button class="btn btn-primary" style="height:48px;padding:0 28px" onclick="registrarCompra()">
+            <i class="fa-solid fa-circle-check"></i> Registrar Compra
+        </button>
     </div>
 </div>
+
+</div><!-- /pag-wrap -->
 
 <script>
-const PRODUCTOS = <?= json_encode($prodJS) ?>;
+let tipoActual = 'proveedor';
 
-const ComprasUI = (() => {
-    const lineas = {};
-    let nextIdx = 0;
-    let tipoActual = 'proveedor';
+function setTipo(t) {
+    tipoActual = t;
+    document.getElementById('btn-tipo-prov').classList.toggle('active', t === 'proveedor');
+    document.getElementById('btn-tipo-dir').classList.toggle('active',  t === 'directa');
+    document.getElementById('row-proveedor').style.display = t === 'proveedor' ? '' : 'none';
+}
 
-    function buildOpts(filtro = '') {
-        const f = filtro.toLowerCase();
-        return '<option value="">Seleccionar...</option>'
-            + PRODUCTOS.filter(p => !f
-                || p.nombre.toLowerCase().includes(f)
-                || p.codigoprod.toLowerCase().includes(f))
-            .map(p => `<option value="${p.codigoprod}" data-precio="${p.precio_compra}">${p.nombre} [${p.codigoprod}]</option>`)
-            .join('');
+function actualizarTotal() {
+    const v = parseFloat(document.getElementById('inp-monto').value) || 0;
+    document.getElementById('lbl-total').textContent =
+        '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    const wrap = document.getElementById('wrap-monto');
+    wrap.style.borderColor = v > 0 ? 'var(--primary)' : 'var(--border)';
+}
+
+async function registrarCompra() {
+    const monto       = parseFloat(document.getElementById('inp-monto').value)     || 0;
+    const nota        = document.getElementById('inp-nota').value.trim();
+    const proveedorId = document.getElementById('sel-proveedor')?.value || null;
+
+    if (monto <= 0) {
+        mostrarToast('Ingresa un monto mayor a cero.', 'err');
+        document.getElementById('inp-monto').focus();
+        return;
+    }
+    if (tipoActual === 'proveedor' && !proveedorId) {
+        mostrarToast('Selecciona un proveedor.', 'err');
+        return;
     }
 
-    function agregarLinea(filtro = '') {
-        const idx = nextIdx++;
-        lineas[idx] = { codigoprod: '', cantidad: 1, precio: 0 };
-        const div = document.createElement('div');
-        div.className = 'compra-line';
-        div.id = `linea-${idx}`;
-        div.innerHTML = `
-          <select class="form-control" id="sel-prod-${idx}"
-                  onchange="ComprasUI.cambiarProducto(${idx},this)">
-              ${buildOpts(filtro)}
-          </select>
-          <input type="number" class="form-control" min="1" value="1" placeholder="Cant."
-                 onchange="ComprasUI.cambiarCampo(${idx},'cantidad',this.value)">
-          <input type="number" class="form-control" step="0.01" min="0"
-                 id="precio-${idx}" placeholder="P. Unit."
-                 onchange="ComprasUI.cambiarCampo(${idx},'precio',this.value)">
-          <span class="price" id="sub-${idx}">$0.00</span>
-          <button class="btn-icon del" onclick="ComprasUI.eliminarLinea(${idx})"><i class="fa-solid fa-trash-can"></i></button>`;
-        document.getElementById('lineas-compra').appendChild(div);
-    }
+    const body = {
+        tipo         : tipoActual,
+        proveedor_id : proveedorId ? parseInt(proveedorId) : null,
+        total        : monto,
+        nota         : nota,
+        detalle      : [],   // sin detalle de productos
+    };
 
-    function cambiarProducto(idx, sel) {
-        const opt   = sel.options[sel.selectedIndex];
-        const precio= parseFloat(opt.dataset.precio || 0);
-        lineas[idx].codigoprod = sel.value;
-        lineas[idx].precio     = precio;
-        const pEl = document.getElementById(`precio-${idx}`);
-        if (pEl) pEl.value = precio.toFixed(2);
-        actualizarSubtotal(idx);
-        actualizarTotal();
-    }
+    const btn = document.querySelector('button[onclick="registrarCompra()"]');
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
 
-    function cambiarCampo(idx, campo, val) {
-        lineas[idx][campo] = campo === 'cantidad' ? parseInt(val)||0 : parseFloat(val)||0;
-        actualizarSubtotal(idx);
-        actualizarTotal();
-    }
-
-    function actualizarSubtotal(idx) {
-        const sub = (lineas[idx].cantidad||0) * (lineas[idx].precio||0);
-        const el  = document.getElementById(`sub-${idx}`);
-        if (el) el.textContent = '$' + sub.toFixed(2);
-    }
-
-    function actualizarTotal() {
-        const tot = Object.values(lineas).reduce((s,l) => s + (l.cantidad||0)*(l.precio||0), 0);
-        document.getElementById('total-compra').textContent = '$' + tot.toFixed(2);
-    }
-
-    function eliminarLinea(idx) {
-        if (Object.keys(lineas).length <= 1) {
-            mostrarToast('Debe haber al menos una línea.','err'); return;
-        }
-        delete lineas[idx];
-        document.getElementById(`linea-${idx}`)?.remove();
-        actualizarTotal();
-    }
-
-    function filtrar(q) {
-        Object.keys(lineas).forEach(idx => {
-            const sel = document.getElementById(`sel-prod-${idx}`);
-            if (!sel) return;
-            const cur = sel.value;
-            sel.innerHTML = buildOpts(q);
-            if (cur) sel.value = cur;
+    try {
+        const res  = await fetch(BASE + 'compras/registrar', {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify(body),
         });
-    }
-
-    function setTipo(t) {
-        tipoActual = t;
-        document.querySelectorAll('.tipo-btn').forEach(b =>
-            b.classList.toggle('active', b.dataset.tipo === t));
-        const row = document.getElementById('row-proveedor');
-        if (row) row.style.display = t === 'proveedor' ? '' : 'none';
-    }
-
-    async function registrar() {
-        const detalle = Object.values(lineas)
-            .filter(l => l.codigoprod && l.cantidad > 0 && l.precio > 0)
-            .map(l => ({ codigoprod: l.codigoprod, cantidad: l.cantidad, precio_unitario: l.precio }));
-
-        if (!detalle.length) {
-            mostrarToast('Agrega al menos un producto con cantidad y precio.','err'); return;
+        const resp = await res.json();
+        if (resp.ok) {
+            mostrarToast('Compra registrada correctamente');
+            document.getElementById('inp-monto').value = '';
+            document.getElementById('inp-nota').value  = '';
+            if (document.getElementById('sel-proveedor'))
+                document.getElementById('sel-proveedor').value = '';
+            actualizarTotal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarToast(resp.mensaje || 'Error al registrar', 'err');
         }
-        const body = {
-            tipo:         tipoActual,
-            proveedor_id: document.getElementById('sel-proveedor')?.value ?? 0,
-            nota:         document.getElementById('compra-nota')?.value ?? '',
-            detalle,
-        };
-        try {
-            const res  = await fetch(BASE + 'compras/registrar', {
-                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-            });
-            const resp = await res.json();
-            mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-            if (resp.ok) setTimeout(() => location.reload(), 900);
-        } catch(e) { mostrarToast('Error de conexión','err'); }
+    } catch(e) {
+        mostrarToast('Error de conexión', 'err');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Registrar Compra';
     }
-
-    return { agregarLinea, cambiarProducto, cambiarCampo, eliminarLinea,
-             filtrar, setTipo, registrar };
-})();
-
-document.addEventListener('DOMContentLoaded', () => ComprasUI.agregarLinea());
+}
 </script>
 
-</div>
-</div>
 <?php cerrarLayout(); ?>

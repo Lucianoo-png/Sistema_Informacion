@@ -16,8 +16,7 @@ abrirLayout('Transferencias', 'transferencias');
 ?>
 <div class="pag-wrap">
 
-<h1>Transferencias</h1>
-    <p>Ingresos por transferencia bancaria</p>
+<div class="page-header"><h1>Transferencias</h1><p>Ingresos por transferencia bancaria</p></div>
 </div>
 
 <div class="two-col" style="margin-bottom:20px">

@@ -1,7 +1,8 @@
 <?php
 // =====================================================
 // control/CompraControlador.php
-// CAMBIO: codigoprod VARCHAR en detalle, bitácora
+// SIMPLIFICADO: acepta total directo (sin detalle de productos)
+// Compatible con la tabla compras que ya NO tiene compra_detalle
 // =====================================================
 
 require_once BASE_PATH . 'modelo/Compra.php';
@@ -16,53 +17,47 @@ class CompraControlador {
         $this->bitacora = new Bitacora();
     }
 
-    public function obtenerDelDia(string $fecha=''): array {
+    public function obtenerDelDia(string $fecha = ''): array {
         return $this->modelo->obtenerDelDia($fecha ?: date('Y-m-d'));
     }
 
-    public function totalDelDia(string $fecha=''): float {
+    public function totalDelDia(string $fecha = ''): float {
         return $this->modelo->totalDelDia($fecha ?: date('Y-m-d'));
     }
 
-    // CREATE — JSON: {tipo, proveedor_id, nota, detalle:[{codigoprod,cantidad,precio_unitario}]}
+    // CREATE — acepta {tipo, proveedor_id, total, nota/descripcion}
     public function registrar(): void {
         $input = json_decode(file_get_contents('php://input'), true);
+        $clave = $_SESSION['usuario'] ?? 'SIST';
 
-        if (empty($input['detalle'])) {
-            $this->json(['ok'=>false,'mensaje'=>'Agrega al menos un producto.']);
+        // Monto directo (formulario simplificado)
+        $total = (float)($input['total'] ?? 0);
+        if ($total <= 0) {
+            $this->json(['ok' => false, 'mensaje' => 'El monto debe ser mayor a cero.']);
             return;
-        }
-
-        $total   = 0;
-        $detalle = [];
-
-        foreach ($input['detalle'] as $it) {
-            $sub = (float)$it['cantidad'] * (float)$it['precio_unitario'];
-            $total += $sub;
-            $detalle[] = [
-                'codigoprod'      => $it['codigoprod'],
-                'cantidad'        => (int)$it['cantidad'],
-                'precio_unitario' => (float)$it['precio_unitario'],
-            ];
         }
 
         $cabecera = [
             'fecha'        => date('Y-m-d'),
-            'proveedor_id' => (int)($input['proveedor_id'] ?? 0) ?: null,
+            'proveedor_id' => !empty($input['proveedor_id']) ? (int)$input['proveedor_id'] : null,
             'tipo'         => $input['tipo'] ?? 'directa',
             'total'        => $total,
-            'nota'         => $input['nota'] ?? null,
+            // Usar descripcion si existe, sino nota
+            'descripcion'  => trim($input['nota'] ?? $input['descripcion'] ?? ''),
         ];
 
-        $id    = $this->modelo->registrar($cabecera, $detalle);
-        $clave = $_SESSION['usuario'] ?? 'SIST';
+        $id = $this->modelo->registrarSimple($cabecera);
 
         if ($id) {
-            $this->bitacora->registrar($clave, "Compra registrada ID:{$id} total:\${$total}", 'C');
-            $this->json(['ok'=>true,'compra_id'=>$id,'mensaje'=>'Compra registrada correctamente.']);
+            $prov = $input['tipo'] === 'proveedor' ? " (proveedor ID:" . ($cabecera['proveedor_id'] ?? '?') . ")" : '';
+            $this->bitacora->registrar($clave,
+                "Compra registrada ID:{$id} total:\${$total}{$prov}", 'C');
+            $this->json(['ok' => true, 'compra_id' => $id,
+                         'mensaje' => 'Compra registrada correctamente.']);
         } else {
-            $this->bitacora->registrar($clave, "Error al registrar compra total:\${$total}", 'E');
-            $this->json(['ok'=>false,'mensaje'=>'Error al registrar la compra.']);
+            $this->bitacora->registrar($clave,
+                "Error al registrar compra total:\${$total}", 'E');
+            $this->json(['ok' => false, 'mensaje' => 'Error al registrar la compra.']);
         }
     }
 

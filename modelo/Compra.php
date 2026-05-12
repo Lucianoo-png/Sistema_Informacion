@@ -125,5 +125,31 @@ class Compra {
         return $stmt->fetchAll();
     }
 
+    // CREATE — Registro simple: solo cabecera, sin detalle de productos
+    // Compatible con la BD que ya no tiene la tabla compra_detalle
+    public function registrarSimple(array $cab): int|false {
+        try {
+            $sql = "INSERT INTO compras
+                        (fecha, proveedor_id, tipo, total, nota, descripcion)
+                    VALUES
+                        (:fecha, :prov, :tipo, :total, :nota, :desc)
+                    RETURNING id";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':fecha' => $cab['fecha'],
+                ':prov'  => $cab['proveedor_id'],
+                ':tipo'  => $cab['tipo'],
+                ':total' => $cab['total'],
+                ':nota'  => $cab['descripcion'] ?? null,  // nota = descripcion en BD
+                ':desc'  => $cab['descripcion'] ?? null,  // descripcion (nueva columna)
+            ]);
+            return (int) $stmt->fetchColumn();
+        } catch (\Exception $e) {
+            error_log('Compra::registrarSimple — ' . $e->getMessage());
+            return false;
+        }
+    }
+
 }
 ?>
