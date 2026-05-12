@@ -125,7 +125,7 @@ abrirLayout('Inventario', 'inventario');
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-ruler" style="color:var(--primary)"></i> Unidad</label>
-                    <select class="form-control" name="unidad" id="prod-unidad">
+                    <select class="form-control" name="unidad" id="prod-unidad" onchange="actualizarHintStock(this.value)">
                         <option>pieza</option><option>kg</option><option>litro</option>
                         <option>bolsa</option><option>caja</option><option>paquete</option>
                     </select>
@@ -149,12 +149,12 @@ abrirLayout('Inventario', 'inventario');
                     <input type="number" class="form-control" name="precio_venta" id="prod-p-venta" step="0.01" min="0">
                 </div>
                 <div class="form-group">
-                    <label><i class="fa-solid fa-cubes" style="color:var(--primary)"></i> Stock actual</label>
-                    <input type="number" class="form-control" name="stock" id="prod-stock" min="1">
+                    <label><i class="fa-solid fa-cubes" style="color:var(--primary)"></i> Stock actual <span id="lbl-stock-hint" style="font-size:10px;color:var(--text-muted)">(unidades)</span></label>
+                    <input type="number" class="form-control" name="stock" id="prod-stock" min="0" step="0.001" placeholder="0">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-triangle-exclamation" style="color:#d97706"></i> Stock mínimo</label>
-                    <input type="number" class="form-control" name="stock_minimo" id="prod-stock-min" min="1">
+                    <input type="number" class="form-control" name="stock_minimo" id="prod-stock-min" min="0" placeholder="3 (opcional)">
                 </div>
             </div>
         </form>
@@ -248,8 +248,13 @@ const Inventario = (() => {
             document.getElementById('prod-nombre').focus();
             return;
         }
-        const stock = parseInt(document.getElementById('prod-stock').value) || 0;
-        if (stock < 1) {
+        const unidad = document.getElementById('prod-unidad').value.toLowerCase().trim();
+        const esKg   = unidad === 'kg';
+        const stock  = parseFloat(document.getElementById('prod-stock').value);
+
+        // Para productos en kg: stock puede ser null/0 (se actualiza al vender)
+        // Para otros productos: stock debe ser >= 1
+        if (!esKg && (isNaN(stock) || stock < 1)) {
             mostrarToast('El stock debe ser al menos 1 unidad.', 'err');
             document.getElementById('prod-stock').focus();
             return;
@@ -284,6 +289,22 @@ const Inventario = (() => {
     }
     return { abrirModal, cerrarModal, guardar, eliminar };
 })();
+
+function actualizarHintStock(unidad) {
+    const hint  = document.getElementById('lbl-stock-hint');
+    const input = document.getElementById('prod-stock');
+    const smInput = document.getElementById('prod-stock-min');
+    if (!hint) return;
+    if (unidad.toLowerCase() === 'kg') {
+        hint.textContent = '(kg, decimal permitido — puede ser 0)';
+        input.step = '0.001'; input.placeholder = 'ej: 5.500';
+        smInput.step = '0.001'; smInput.placeholder = 'ej: 1.000 (opcional)';
+    } else {
+        hint.textContent = '(unidades enteras)';
+        input.step = '1'; input.placeholder = '0';
+        smInput.step = '1'; smInput.placeholder = '3';
+    }
+}
 </script>
 
 </div>

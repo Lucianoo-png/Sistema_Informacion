@@ -26,7 +26,7 @@ abrirLayout('Bitácora', 'bitacora');
 ?>
 <div class="pag-wrap-lg">
 
-<div class="page-header"><h1>Bitácora</h1><p>Auditoría de operaciones del sistema — <?= $filtFecha ? "Filtrando por: " . $filtFecha : "Todo el historial" ?></p>
+<div class="page-header" style="margin-bottom:28px"><h1>Bitácora</h1><p>Auditoría de operaciones del sistema — <?= $filtFecha ? "Filtrando por: " . $filtFecha : "Todo el historial" ?></p>
 
 <!-- Resumen rápido -->
 <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
