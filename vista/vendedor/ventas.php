@@ -111,7 +111,7 @@ body.page-ventas .pag-wrap-lg { max-width: none !important; margin: 0 !important
 .mp-box h3 { font-size:16px; font-weight:700; margin-bottom:3px; }
 .mp-tag { font-size:11px; background:#e8f5ee; color:var(--success); padding:2px 8px; border-radius:5px; font-weight:600; margin-bottom:12px; display:inline-block; }
 .mp-ref { font-size:11px; color:var(--text-muted); margin-left:6px; }
-.mp-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.mp-fields { margin-bottom:12px; }
 .mp-group { display:flex; flex-direction:column; gap:4px; }
 .mp-group label { font-size:11px; font-weight:600; color:var(--text-muted); }
 .mp-group input { padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:15px; text-align:right; width:100%; }
@@ -135,12 +135,13 @@ body.page-ventas .pag-wrap-lg { max-width: none !important; margin: 0 !important
         </div>
         <div class="mp-fields">
             <div class="mp-group">
-                <label>Cantidad (kg)</label>
-                <input type="number" id="mp-cant" min="0.001" step="0.001" placeholder="0.000">
-            </div>
-            <div class="mp-group">
-                <label>Precio a cobrar ($)</label>
-                <input type="number" id="mp-prec" min="0.01" step="0.5" placeholder="0.00">
+                <label style="font-size:13px;font-weight:600;color:var(--text-muted)">
+                    Precio a cobrar ($)
+                </label>
+                <input type="number" id="mp-prec" min="0.01" step="0.5" placeholder="0.00"
+                       style="font-size:24px;font-weight:700;text-align:center;padding:14px 12px;
+                              border:2px solid var(--primary);border-radius:10px;width:100%;
+                              margin-top:6px;box-sizing:border-box">
             </div>
         </div>
         <div class="mp-total-box">
@@ -379,7 +380,7 @@ function render() {
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
                 <span style="font-size:11px;color:var(--text-muted)">
-                  ${it.cantidad} kg × ${fmt(it.precio)}
+                  ${it.cantidad > 1 ? it.cantidad + ' cobros' : 'precio cobrado'}
                 </span>
                 <button class="btn-quitar" onclick="quitar('${cod}')">
                   <i class="fa-solid fa-trash-can"></i> Quitar
@@ -449,40 +450,37 @@ function abrirMP(p) {
     document.getElementById('mp-nombre').textContent = p.nombre;
     document.getElementById('mp-ref').textContent =
         '(ref: ' + fmt(p.precio_venta) + '/kg)';
-    document.getElementById('mp-cant').value  = '';
     document.getElementById('mp-prec').value  = '';
     document.getElementById('mp-total').textContent = '$0.00';
     document.getElementById('mp-overlay').classList.add('open');
-    setTimeout(() => document.getElementById('mp-cant').focus(), 80);
+    setTimeout(() => document.getElementById('mp-prec').focus(), 80);
 }
 function cerrarMP() {
     document.getElementById('mp-overlay').classList.remove('open');
     _prodModal = null;
 }
 function calcMP() {
-    const c = parseFloat(document.getElementById('mp-cant').value) || 0;
     const p = parseFloat(document.getElementById('mp-prec').value) || 0;
-    document.getElementById('mp-total').textContent = fmt(c * p);
-    document.getElementById('mp-total').style.color =
-        (c > 0 && p > 0) ? 'var(--success)' : 'var(--primary)';
+    document.getElementById('mp-total').textContent = fmt(p);
+    document.getElementById('mp-total').style.color = p > 0 ? 'var(--success)' : 'var(--primary)';
 }
 function confirmarMP() {
-    const cant = parseFloat(document.getElementById('mp-cant').value);
     const prec = parseFloat(document.getElementById('mp-prec').value);
-    if (!cant || cant <= 0) { mostrarToast('Cantidad inválida','err'); return; }
-    if (!prec || prec <= 0) { mostrarToast('Precio inválido','err'); return; }
+    if (!prec || prec <= 0) { mostrarToast('Ingresa el precio a cobrar','err'); return; }
 
     const p   = _prodModal;
     const cod = p.codigoprod;
     if (items[cod] && items[cod].tipo === 'peso') {
-        items[cod].cantidad = parseFloat((items[cod].cantidad + cant).toFixed(3));
-        items[cod].precio   = prec;
+        // Ya existe en carrito: agregar como cobro adicional
+        items[cod].cantidad += 1;
+        items[cod].precio    = parseFloat(((items[cod].precio * (items[cod].cantidad - 1) + prec) / items[cod].cantidad).toFixed(2));
     } else {
+        // cantidad=1, precio=total cobrado
         items[cod] = { codigoprod:cod, nombre:p.nombre, tipo:'peso',
-                       precio:prec, cantidad:parseFloat(cant.toFixed(3)),
+                       precio:prec, cantidad:1,
                        stock:parseFloat(p.stock), unidad:'kg' };
     }
-    mostrarToast('✓ ' + p.nombre + ' — ' + fmt(cant * prec));
+    mostrarToast('✓ ' + p.nombre + ' — ' + fmt(prec));
     cerrarMP(); render();
 }
 
@@ -559,9 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Modal: inputs en tiempo real
-    document.getElementById('mp-cant').addEventListener('input', calcMP);
     document.getElementById('mp-prec').addEventListener('input', calcMP);
-    document.getElementById('mp-cant').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('mp-prec').focus(); });
     document.getElementById('mp-prec').addEventListener('keydown', e => { if (e.key==='Enter') confirmarMP(); });
 
     // Cerrar modal al click fuera
