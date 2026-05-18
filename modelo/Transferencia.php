@@ -15,6 +15,7 @@ class Transferencia {
 
     // CREATE
     public function registrar(array $d): bool {
+<<<<<<< HEAD
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO transferencias (fecha, monto, concepto, referencia)
@@ -30,6 +31,18 @@ class Transferencia {
             error_log('Transferencia::registrar — ' . $e->getMessage());
             return false;
         }
+=======
+        $stmt = $this->db->prepare(
+            "INSERT INTO transferencias (fecha, monto, concepto, referencia)
+             VALUES (:fecha, :monto, :concepto, :ref)"
+        );
+        return $stmt->execute([
+            ':fecha'   => $d['fecha'],
+            ':monto'   => $d['monto'],
+            ':concepto'=> $d['concepto']   ?? null,
+            ':ref'     => $d['referencia'] ?? null,
+        ]);
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
     }
 
     // READ — del día

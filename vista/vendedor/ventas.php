@@ -331,6 +331,7 @@ function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+<<<<<<< HEAD
 // ── Toggle edición KG en carrito ventas ──────────
 function toggleEditarKg(cod) {
     if (!items[cod]) return;
@@ -338,6 +339,8 @@ function toggleEditarKg(cod) {
     render();
 }
 
+=======
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
 // ── RENDER CARRITO ────────────────────────────────
 function render() {
     const el    = document.getElementById('cart-items');
@@ -364,17 +367,24 @@ function render() {
         const sub = it.precio * it.cantidad;
 
         if (it.tipo === 'peso') {
+<<<<<<< HEAD
             // KG: precio bloqueado por defecto; botón Editar para desbloquear
             const bloqueado = !it.editando;
             return `
             <div class="cart-item">
               <div class="ci-top" style="margin-bottom:6px">
+=======
+            return `
+            <div class="cart-item">
+              <div class="ci-top">
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
                 <span class="ci-name">
                   <i class="fa-solid fa-leaf" style="color:var(--success);font-size:10px"></i>
                   ${esc(it.nombre)}
                 </span>
                 <span class="ci-total">${fmt(sub)}</span>
               </div>
+<<<<<<< HEAD
               <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;
                           padding:6px 8px;background:#f5f0eb;border-radius:7px">
                 <span style="font-size:11px;color:var(--text-muted);font-weight:600">
@@ -396,12 +406,31 @@ function render() {
                   <i class="fa-solid fa-${bloqueado ? 'pen' : 'check'}"></i>
                   ${bloqueado ? 'Editar' : 'Listo'}
                 </button>
+=======
+              <div class="peso-inputs">
+                <div class="pi-group">
+                  <label>Cantidad (kg)</label>
+                  <input type="number" value="${it.cantidad}" min="0.001" step="0.001"
+                         oninput="updateCampo('${cod}','cantidad',this.value)">
+                </div>
+                <div class="pi-group">
+                  <label>Precio ($)</label>
+                  <input type="number" value="${it.precio.toFixed(2)}" min="0.01" step="0.5"
+                         oninput="updateCampo('${cod}','precio',this.value)">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+                <span style="font-size:11px;color:var(--text-muted)">
+                  ${it.cantidad > 1 ? it.cantidad + ' cobros' : 'precio cobrado'}
+                </span>
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
                 <button class="btn-quitar" onclick="quitar('${cod}')">
                   <i class="fa-solid fa-trash-can"></i> Quitar
                 </button>
               </div>
             </div>`;
         } else {
+<<<<<<< HEAD
             // GENERAL: nombre arriba, precio c/u + qty-ctrl + quitar en fila limpia
             return `
             <div class="cart-item">
@@ -422,6 +451,23 @@ function render() {
                     <button onclick="cambiarCant('${cod}',+1)">+</button>
                   </div>
                   <button class="btn-quitar" onclick="quitar('${cod}')" style="padding:0 4px">
+=======
+            return `
+            <div class="cart-item">
+              <div class="ci-top">
+                <span class="ci-name">${esc(it.nombre)}</span>
+                <span class="ci-total">${fmt(sub)}</span>
+              </div>
+              <div class="ci-bot">
+                <span class="ci-unitprice">${fmt(it.precio)} c/u</span>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <div class="qty-ctrl">
+                    <button onclick="cambiarCant('${cod}',-1)">−</button>
+                    <span>${it.cantidad}</span>
+                    <button onclick="cambiarCant('${cod}',+1)">+</button>
+                  </div>
+                  <button class="btn-quitar" onclick="quitar('${cod}')">
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
                     <i class="fa-solid fa-xmark"></i>
                   </button>
                 </div>
@@ -497,7 +543,11 @@ function confirmarMP() {
         // cantidad=1, precio=total cobrado
         items[cod] = { codigoprod:cod, nombre:p.nombre, tipo:'peso',
                        precio:prec, cantidad:1,
+<<<<<<< HEAD
                        stock:parseFloat(p.stock), unidad:'kg', editando:false };
+=======
+                       stock:parseFloat(p.stock), unidad:'kg' };
+>>>>>>> 1348629ef2416e3beac80854ef0cae2ad5d447db
     }
     mostrarToast('✓ ' + p.nombre + ' — ' + fmt(prec));
     cerrarMP(); render();
