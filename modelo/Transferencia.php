@@ -50,6 +50,18 @@ class Transferencia {
         return (float) $stmt->fetchColumn();
     }
 
+    // READ — total en rango de fechas
+    // CORRECCIÓN: método faltante — necesario para el Corte de Caja multiperiodo
+    public function totalEnRango(string $desde, string $hasta): float {
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(monto), 0)
+               FROM transferencias
+              WHERE fecha BETWEEN :desde AND :hasta"
+        );
+        $stmt->execute([':desde' => $desde, ':hasta' => $hasta]);
+        return (float) $stmt->fetchColumn();
+    }
+
     // READ — historial completo
     public function obtenerTodas(): array {
         return $this->db->query(

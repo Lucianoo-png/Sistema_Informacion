@@ -1,22 +1,27 @@
 <?php
 // =====================================================
 // control/ReporteControlador.php
-// NUEVO: métodos por rango (semanal, mensual, anual, personalizado)
+// CORRECCIÓN: incluye tabla transferencias en Corte de Caja.
+// Antes sólo sumaba ventas.metodo_pago='transferencia';
+// ahora también suma la tabla separada `transferencias`.
 // =====================================================
 
 require_once BASE_PATH . 'modelo/Venta.php';
 require_once BASE_PATH . 'modelo/Compra.php';
 require_once BASE_PATH . 'modelo/Producto.php';
+require_once BASE_PATH . 'modelo/Transferencia.php';
 
 class ReporteControlador {
-    private Venta    $modeloVenta;
-    private Compra   $modeloCompra;
-    private Producto $modeloProducto;
+    private Venta         $modeloVenta;
+    private Compra        $modeloCompra;
+    private Producto      $modeloProducto;
+    private Transferencia $modeloTransferencia;
 
     public function __construct() {
-        $this->modeloVenta    = new Venta();
-        $this->modeloCompra   = new Compra();
-        $this->modeloProducto = new Producto();
+        $this->modeloVenta         = new Venta();
+        $this->modeloCompra        = new Compra();
+        $this->modeloProducto      = new Producto();
+        $this->modeloTransferencia = new Transferencia();
     }
 
     // ── Panel principal (día actual) ───────────────
@@ -24,18 +29,23 @@ class ReporteControlador {
         $fecha   = $fecha ?: date('Y-m-d');
         $totV    = $this->modeloVenta->totalDelDia($fecha);
         $totC    = $this->modeloCompra->totalDelDia($fecha);
+        $totTf   = $this->modeloTransferencia->totalDelDia($fecha);
         $stkBajo = $this->modeloProducto->contarStockBajo();
 
+        $totalIngresos = ($totV['total_ventas'] ?? 0) + $totTf;
+
         return [
-            'ventas_dia'       => $totV['total_ventas']      ?? 0,
-            'transacciones'    => $totV['num_transacciones']  ?? 0,
-            'efectivo_dia'     => $totV['efectivo']           ?? 0,
-            'transferencia_dia'=> $totV['transferencia']      ?? 0,
-            'compras_dia'      => $totC,
-            'balance'          => ($totV['total_ventas'] ?? 0) - $totC,
-            'stock_bajo'       => $stkBajo,
-            'ventas_recientes' => $this->modeloVenta->obtenerDelDia($fecha),
-            'compras_recientes'=> $this->modeloCompra->obtenerDelDia($fecha),
+            'ventas_dia'           => $totV['total_ventas']      ?? 0,
+            'transacciones'        => $totV['num_transacciones']  ?? 0,
+            'efectivo_dia'         => $totV['efectivo']           ?? 0,
+            'transferencia_dia'    => $totV['transferencia']      ?? 0,
+            'transferencias_banco' => $totTf,
+            'total_ingresos'       => $totalIngresos,
+            'compras_dia'          => $totC,
+            'balance'              => $totalIngresos - $totC,
+            'stock_bajo'           => $stkBajo,
+            'ventas_recientes'     => $this->modeloVenta->obtenerDelDia($fecha),
+            'compras_recientes'    => $this->modeloCompra->obtenerDelDia($fecha),
         ];
     }
 
@@ -43,19 +53,18 @@ class ReporteControlador {
     public function reporteDiario(string $fecha = ''): array {
         $fecha = $fecha ?: date('Y-m-d');
         return [
-            'fecha'        => $fecha,
-            'desde'        => $fecha,
-            'hasta'        => $fecha,
-            'totales'      => $this->modeloVenta->totalDelDia($fecha),
-            'total_compras'=> $this->modeloCompra->totalDelDia($fecha),
-            'mas_vendidos' => $this->modeloVenta->masVendidos($fecha),
+            'fecha'         => $fecha,
+            'desde'         => $fecha,
+            'hasta'         => $fecha,
+            'totales'       => $this->modeloVenta->totalDelDia($fecha),
+            'total_compras' => $this->modeloCompra->totalDelDia($fecha),
+            'mas_vendidos'  => $this->modeloVenta->masVendidos($fecha),
             'ventas_por_dia'=> [],
         ];
     }
 
     // ── Reporte por rango ──────────────────────────
     public function reporteRango(string $desde, string $hasta): array {
-        // Validar orden de fechas
         if ($desde > $hasta) [$desde, $hasta] = [$hasta, $desde];
 
         $totV = $this->modeloVenta->totalEnRango($desde, $hasta);
@@ -81,35 +90,44 @@ class ReporteControlador {
         $fecha   = $fecha ?: date('Y-m-d');
         $totales = $this->modeloVenta->totalDelDia($fecha);
         $totC    = $this->modeloCompra->totalDelDia($fecha);
+        $totTf   = $this->modeloTransferencia->totalDelDia($fecha);
+
+        $totalIngresos = ($totales['total_ventas'] ?? 0) + $totTf;
 
         return [
-            'fecha'         => $fecha,
-            'desde'         => $fecha,
-            'hasta'         => $fecha,
-            'efectivo'      => $totales['efectivo']          ?? 0,
-            'transferencia' => $totales['transferencia']      ?? 0,
-            'total_ingresos'=> $totales['total_ventas']       ?? 0,
-            'total_compras' => $totC,
-            'balance_final' => ($totales['total_ventas'] ?? 0) - $totC,
-            'num_ventas'    => $totales['num_transacciones']  ?? 0,
+            'fecha'                => $fecha,
+            'desde'                => $fecha,
+            'hasta'                => $fecha,
+            'efectivo'             => $totales['efectivo']         ?? 0,
+            'transferencia'        => $totales['transferencia']    ?? 0,
+            'transferencias_banco' => $totTf,
+            'total_ingresos'       => $totalIngresos,
+            'total_compras'        => $totC,
+            'balance_final'        => $totalIngresos - $totC,
+            'num_ventas'           => $totales['num_transacciones'] ?? 0,
         ];
     }
 
     // ── Corte de caja por rango ────────────────────
     public function corteRango(string $desde, string $hasta): array {
         if ($desde > $hasta) [$desde, $hasta] = [$hasta, $desde];
-        $totV = $this->modeloVenta->totalEnRango($desde, $hasta);
-        $totC = $this->modeloCompra->totalEnRango($desde, $hasta);
+
+        $totV  = $this->modeloVenta->totalEnRango($desde, $hasta);
+        $totC  = $this->modeloCompra->totalEnRango($desde, $hasta);
+        $totTf = $this->modeloTransferencia->totalEnRango($desde, $hasta);
+
+        $totalIngresos = ($totV['total_ventas'] ?? 0) + $totTf;
 
         return [
-            'desde'         => $desde,
-            'hasta'         => $hasta,
-            'efectivo'      => $totV['efectivo']          ?? 0,
-            'transferencia' => $totV['transferencia']      ?? 0,
-            'total_ingresos'=> $totV['total_ventas']       ?? 0,
-            'total_compras' => $totC,
-            'balance_final' => ($totV['total_ventas'] ?? 0) - $totC,
-            'num_ventas'    => $totV['num_transacciones']  ?? 0,
+            'desde'                => $desde,
+            'hasta'                => $hasta,
+            'efectivo'             => $totV['efectivo']          ?? 0,
+            'transferencia'        => $totV['transferencia']     ?? 0,
+            'transferencias_banco' => $totTf,
+            'total_ingresos'       => $totalIngresos,
+            'total_compras'        => $totC,
+            'balance_final'        => $totalIngresos - $totC,
+            'num_ventas'           => $totV['num_transacciones']  ?? 0,
         ];
     }
 

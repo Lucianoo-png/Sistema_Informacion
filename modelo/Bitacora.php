@@ -26,15 +26,27 @@ class Bitacora {
      * @param string $estado        'C' completado | 'E' error
      */
     public function registrar(string $claveCuenta, string $descripcion, string $estado = 'C'): bool {
-        $stmt = $this->db->prepare(
-            "INSERT INTO bitacora (clave_cuenta, descripcion, estado)
-             VALUES (:clave, :desc, :estado)"
-        );
-        return $stmt->execute([
-            ':clave'  => $claveCuenta,
-            ':desc'   => $descripcion,
-            ':estado' => $estado,
-        ]);
+        // CORRECCIÓN: try/catch para que una FK violation (usuario no existe en cuenta)
+        // o cualquier otro error de BD no lance una excepción no capturada que rompa
+        // la respuesta JSON en VentaControlador / CompraControlador.
+        // Causa real del "no puedo hacer ventas": ALE01 no existía en tabla cuenta →
+        // INSERT bitacora violaba FK fk_bitacora_cuenta → PHP devolvía HTML de error
+        // en lugar de JSON → el frontend atrapaba "Error de conexión".
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO bitacora (clave_cuenta, descripcion, estado)
+                 VALUES (:clave, :desc, :estado)"
+            );
+            return $stmt->execute([
+                ':clave'  => $claveCuenta,
+                ':desc'   => $descripcion,
+                ':estado' => $estado,
+            ]);
+        } catch (\Exception $e) {
+            // Fallo silencioso: loguea el error pero no interrumpe el flujo
+            error_log('Bitacora::registrar — ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**

@@ -36,42 +36,9 @@ $etiquetaPeriodo = match($periodo) {
     default         => fechaEspanol($desde),
 };
 
-abrirLayout('Reporte', 'reporte');
+abrirLayout('Reporte', 'reporte', BASE_URL . 'estilos/reporte_diario.css');
 ?>
 
-<style>
-.rep-wrap { max-width:960px; margin:0 auto; }
-.periodo-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-.periodo-tab {
-    padding:8px 18px; border-radius:8px; border:1.5px solid var(--border);
-    font-size:13px; font-weight:600; cursor:pointer; background:#fff;
-    color:var(--text-dark); text-decoration:none; transition:.15s;
-}
-.periodo-tab:hover  { border-color:var(--primary); color:var(--primary); }
-.periodo-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-
-.personalizado-row {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    background:#fff; border:1.5px solid var(--border);
-    border-radius:10px; padding:12px 16px; margin-bottom:20px;
-}
-.personalizado-row label { font-size:12px; color:var(--text-muted); font-weight:600; }
-.personalizado-row input[type=date] {
-    padding:7px 12px; border:1.5px solid var(--border);
-    border-radius:7px; font-size:13px; cursor:pointer;
-}
-.personalizado-row input[type=date]:focus { outline:none; border-color:var(--primary); }
-
-/* Mini tabla ventas por día */
-.mini-table { width:100%; border-collapse:collapse; font-size:13px; }
-.mini-table th { background:#f5f0eb; padding:8px 12px; text-align:left;
-                 font-size:11px; text-transform:uppercase; color:var(--text-muted); }
-.mini-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
-.mini-table tr:last-child td { border-bottom:none; }
-.mini-table .bar-col { width:100px; }
-.dia-bar-wrap { background:#f5f0eb; border-radius:4px; height:8px; overflow:hidden; }
-.dia-bar      { background:var(--primary); height:8px; border-radius:4px; transition:width .4s; }
-</style>
 
 <div class="rep-wrap">
 
@@ -103,14 +70,6 @@ abrirLayout('Reporte', 'reporte');
         <i class="fa-solid fa-magnifying-glass"></i> Consultar
     </button>
 </div>
-<script>
-function aplicarPersonalizado() {
-    const d = document.getElementById('inp-desde').value;
-    const h = document.getElementById('inp-hasta').value;
-    if (!d || !h) { mostrarToast('Selecciona ambas fechas', 'err'); return; }
-    location.href = 'reporte?periodo=personalizado&desde=' + d + '&hasta=' + h;
-}
-</script>
 <?php endif; ?>
 
 <!-- ── Métricas principales ────────────────────── -->
@@ -257,4 +216,4 @@ function aplicarPersonalizado() {
 <?php endif; ?>
 
 </div><!-- /rep-wrap -->
-<?php cerrarLayout(); ?>
+<?php cerrarLayout(BASE_URL . 'js/reporte_diario.js'); ?>

@@ -9,7 +9,7 @@ if (date_default_timezone_get() !== 'America/Mexico_City') {
     date_default_timezone_set('America/Mexico_City');
 }
 
-function abrirLayout(string $titulo, string $paginaActual): void {
+function abrirLayout(string $titulo, string $paginaActual, string $extraCss = ''): void {
     $base     = defined('BASE_URL') ? BASE_URL : './';
     $usuario  = $_SESSION['nombre']    ?? '';
     $apellido = $_SESSION['apellidos'] ?? '';
@@ -30,6 +30,7 @@ function abrirLayout(string $titulo, string $paginaActual): void {
   <meta name="base-url" content="' . $base . '">
   <title>' . htmlspecialchars($titulo) . ' — Abarrotes Angy</title>
   <link rel="stylesheet" href="' . $cssUrl . '">
+  ' . ($extraCss ? '<link rel="stylesheet" href="' . $extraCss . '">' : '') . '
   <!-- Font Awesome 6 Free — CSS CDN (gratis, sin atribución en UI) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -43,7 +44,7 @@ function abrirLayout(string $titulo, string $paginaActual): void {
     $GLOBALS['_layout_js'] = $jsUrl;
 }
 
-function cerrarLayout(): void {
+function cerrarLayout(string $extraJs = ''): void {
     $jsUrl = $GLOBALS['_layout_js'] ?? '/AbarrotesAngy/js/abarrotes.js';
     $base  = defined('BASE_URL') ? BASE_URL : './';
 
@@ -62,6 +63,7 @@ function cerrarLayout(): void {
       return "$" + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
   </script>
+  ' . ($extraJs ? '<script src="' . $extraJs . '"></script>' : '') . '
   <script src="' . $jsUrl . '"></script>
 </body>
 </html>';

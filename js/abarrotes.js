@@ -1,8 +1,9 @@
 // =====================================================
 // js/abarrotes.js — Lógica frontend Abarrotes Angy
+// CORRECCIÓN: const BASE eliminada — ya la declara cerrarLayout() en layout.php
 // =====================================================
 
-const BASE = document.querySelector('meta[name="base-url"]')?.content ?? './';
+// BASE viene declarada por el inline-script de cerrarLayout() → no redeclarar aquí
 
 // ── TOAST ──────────────────────────────────────────
 function mostrarToast(msg, tipo = 'ok') {
@@ -28,32 +29,35 @@ function formatMXN(n) {
 // MÓDULO: VENTAS (carrito)
 // ══════════════════════════════════════════════════
 const Carrito = (() => {
-  let items = {};   // { producto_id: {nombre, precio, cantidad} }
+  // CORRECCIÓN: clave del mapa es codigoprod (VARCHAR), no producto.id (INT viejo)
+  let items = {};   // { codigoprod: {nombre, precio, cantidad, stock, codigoprod} }
   let metodoPago = 'efectivo';
 
   function agregar(producto) {
-    if (items[producto.id]) {
-      if (items[producto.id].cantidad < producto.stock) {
-        items[producto.id].cantidad++;
+    const cod = producto.codigoprod;
+    if (items[cod]) {
+      if (items[cod].cantidad < parseFloat(producto.stock)) {
+        items[cod].cantidad++;
       } else {
         mostrarToast('No hay más stock disponible', 'err'); return;
       }
     } else {
-      items[producto.id] = {
-        nombre: producto.nombre,
-        precio: parseFloat(producto.precio_venta),
-        cantidad: 1,
-        stock: parseInt(producto.stock),
-        producto_id: producto.id,
+      items[cod] = {
+        codigoprod: cod,
+        nombre:     producto.nombre,
+        precio:     parseFloat(producto.precio_venta),
+        cantidad:   1,
+        // CORRECCIÓN: parseFloat en lugar de parseInt — stock es NUMERIC(10,3)
+        stock:      parseFloat(producto.stock),
       };
     }
     renderCarrito();
   }
 
-  function cambiarCantidad(id, delta) {
-    if (!items[id]) return;
-    items[id].cantidad += delta;
-    if (items[id].cantidad <= 0) delete items[id];
+  function cambiarCantidad(cod, delta) {
+    if (!items[cod]) return;
+    items[cod].cantidad += delta;
+    if (items[cod].cantidad <= 0) delete items[cod];
     renderCarrito();
   }
 
@@ -64,17 +68,18 @@ const Carrito = (() => {
   function renderCarrito() {
     const container = document.getElementById('cart-items');
     const totalEl   = document.getElementById('cart-total');
-    const btnReg    = document.getElementById('btn-registrar-venta');
+    // CORRECCIÓN: el botón ahora se llama 'btn-registrar' en el HTML nuevo
+    const btnReg    = document.getElementById('btn-registrar');
     if (!container) return;
 
     if (Object.keys(items).length === 0) {
       container.innerHTML = '<p class="cart-empty">Agrega productos al carrito</p>';
-      totalEl.textContent  = formatMXN(0);
-      btnReg.disabled = true;
+      if (totalEl) totalEl.textContent = formatMXN(0);
+      if (btnReg)  btnReg.disabled = true;
       return;
     }
 
-    container.innerHTML = Object.entries(items).map(([id, it]) => `
+    container.innerHTML = Object.entries(items).map(([cod, it]) => `
       <div class="cart-item">
         <div>
           <div class="cart-item-name">${it.nombre}</div>
@@ -82,29 +87,30 @@ const Carrito = (() => {
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="cart-item-qty">
-            <button onclick="Carrito.cambiar(${id},-1)">−</button>
+            <button onclick="Carrito.cambiar('${cod}',-1)">−</button>
             <span>${it.cantidad}</span>
-            <button onclick="Carrito.cambiar(${id},+1)">+</button>
+            <button onclick="Carrito.cambiar('${cod}',+1)">+</button>
           </div>
           <span style="font-weight:700;min-width:60px;text-align:right">${formatMXN(it.precio * it.cantidad)}</span>
         </div>
       </div>`).join('');
 
-    totalEl.textContent = formatMXN(total());
-    btnReg.disabled = false;
+    if (totalEl) totalEl.textContent = formatMXN(total());
+    if (btnReg)  btnReg.disabled = false;
   }
 
   async function registrarVenta() {
-    const btn  = document.getElementById('btn-registrar-venta');
+    // CORRECCIÓN: botón renombrado a 'btn-registrar'
+    const btn  = document.getElementById('btn-registrar');
     const nota = document.getElementById('venta-nota')?.value ?? '';
-    btn.disabled = true;
-    btn.textContent = 'Procesando...';
+    if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
 
+    // CORRECCIÓN: envía codigoprod (VARCHAR) en lugar del antiguo producto_id (INT)
     const detalle = Object.values(items).map(i => ({
-      producto_id:    i.producto_id,
+      codigoprod:     i.codigoprod,
       cantidad:       i.cantidad,
       precio_unitario:i.precio,
-      subtotal:       i.precio * i.cantidad,
+      subtotal:       parseFloat((i.precio * i.cantidad).toFixed(2)),
     }));
 
     try {
@@ -125,8 +131,7 @@ const Carrito = (() => {
     } catch(e) {
       mostrarToast('Error de conexión', 'err');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Registrar Venta';
+      if (btn) { btn.disabled = false; btn.textContent = 'Registrar Venta'; }
     }
   }
 
@@ -210,7 +215,8 @@ const Proveedores = (() => {
     document.getElementById('prov-id').value         = datos.id          ?? '';
     document.getElementById('prov-nombre').value     = datos.nombre      ?? '';
     document.getElementById('prov-telefono').value   = datos.telefono    ?? '';
-    document.getElementById('prov-dias').value       = datos.dias_visita ?? '';
+    // CORRECCIÓN: columna en BD es 'diavisita' (sin guión bajo), no 'dias_visita'
+    document.getElementById('prov-dias').value       = datos.diavisita ?? datos.DiaVisita ?? '';
     modal.classList.add('open');
   }
   function cerrarModal() { document.getElementById('modal-proveedor')?.classList.remove('open'); }
@@ -260,9 +266,10 @@ const Compras = (() => {
   }
 
   async function registrar() {
-    const detalle = lineas.filter(l => l.producto_id && l.cantidad > 0 && l.precio > 0).map(l => ({
-      producto_id:    parseInt(l.producto_id),
-      cantidad:       parseInt(l.cantidad),
+    // CORRECCIÓN: codigoprod (VARCHAR) en lugar del antiguo producto_id (INT)
+    const detalle = lineas.filter(l => l.codigoprod && l.cantidad > 0 && l.precio > 0).map(l => ({
+      codigoprod:     l.codigoprod,
+      cantidad:       parseFloat(l.cantidad),
       precio_unitario:parseFloat(l.precio),
     }));
 

@@ -32,30 +32,9 @@ $etiqueta = match($periodo) {
     default         => fechaEspanol($desde),
 };
 
-abrirLayout('Corte de Caja', 'corte');
+abrirLayout('Corte de Caja', 'corte', BASE_URL . 'estilos/corte_caja.css');
 ?>
 
-<style>
-.corte-wrap { max-width:720px; margin:0 auto; }
-.periodo-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-.periodo-tab {
-    padding:8px 18px; border-radius:8px; border:1.5px solid var(--border);
-    font-size:13px; font-weight:600; cursor:pointer; background:#fff;
-    color:var(--text-dark); text-decoration:none; transition:.15s;
-}
-.periodo-tab:hover  { border-color:var(--primary); color:var(--primary); }
-.periodo-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-.personalizado-row {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    background:#fff; border:1.5px solid var(--border);
-    border-radius:10px; padding:12px 16px; margin-bottom:20px;
-}
-.personalizado-row input[type=date] {
-    padding:7px 12px; border:1.5px solid var(--border);
-    border-radius:7px; font-size:13px;
-}
-.personalizado-row input[type=date]:focus { outline:none; border-color:var(--primary); }
-</style>
 
 <div class="corte-wrap">
 
@@ -87,14 +66,6 @@ abrirLayout('Corte de Caja', 'corte');
         <i class="fa-solid fa-magnifying-glass"></i> Consultar
     </button>
 </div>
-<script>
-function aplicarPersonalizado() {
-    const d = document.getElementById('inp-desde').value;
-    const h = document.getElementById('inp-hasta').value;
-    if (!d || !h) { mostrarToast('Selecciona ambas fechas', 'err'); return; }
-    location.href = 'corte?periodo=personalizado&desde=' + d + '&hasta=' + h;
-}
-</script>
 <?php endif; ?>
 
 <!-- ── Ingresos ───────────────────────────────────── -->
@@ -108,8 +79,13 @@ function aplicarPersonalizado() {
         <span><?= formatMXN($datos['efectivo']) ?></span>
     </div>
     <div class="report-row">
-        <div><i class="fa-solid fa-right-left" style="color:var(--primary)"></i>&ensp;Ventas por Transferencia</div>
+        <div><i class="fa-solid fa-right-left" style="color:var(--primary)"></i>&ensp;Ventas cobradas por Transferencia</div>
         <span><?= formatMXN($datos['transferencia']) ?></span>
+    </div>
+    <!-- CORRECCIÓN: línea nueva — transferencias bancarias de la tabla transferencias -->
+    <div class="report-row">
+        <div><i class="fa-solid fa-building-columns" style="color:var(--primary)"></i>&ensp;Transferencias Bancarias Recibidas</div>
+        <span><?= formatMXN($datos['transferencias_banco']) ?></span>
     </div>
     <div class="report-row total" style="border-top:2px solid var(--border);margin-top:4px;padding-top:12px">
         <strong>Total Ingresos</strong>
@@ -151,4 +127,4 @@ function aplicarPersonalizado() {
 </div>
 
 </div><!-- /corte-wrap -->
-<?php cerrarLayout(); ?>
+<?php cerrarLayout(BASE_URL . 'js/corte_caja.js'); ?>
