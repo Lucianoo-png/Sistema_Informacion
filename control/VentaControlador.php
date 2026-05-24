@@ -9,12 +9,14 @@ require_once BASE_PATH . 'modelo/Venta.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
 
 class VentaControlador {
-    private Venta    $modelo;
-    private Bitacora $bitacora;
+    private Venta         $modelo;
+    private Bitacora      $bitacora;
+    private Transferencia $modeloTransf;
 
     public function __construct() {
-        $this->modelo   = new Venta();
-        $this->bitacora = new Bitacora();
+        $this->modelo       = new Venta();
+        $this->bitacora     = new Bitacora();
+        $this->modeloTransf = new Transferencia();
     }
 
     public function obtenerDelDia(string $fecha = ''): array {
@@ -64,7 +66,16 @@ class VentaControlador {
         $clave   = $_SESSION['usuario'] ?? 'SIST0';
 
         if ($ventaId) {
-            $this->bitacora->registrar($clave, "Venta registrada ID:{$ventaId} total:\${$total}", 'C');
+            // Si el método de pago es transferencia, registrar automáticamente en la tabla transferencias
+            if ($cabecera['metodo_pago'] === 'transferencia') {
+                $this->modeloTransf->registrar([
+                    'fecha'      => $cabecera['fecha'],
+                    'monto'      => $total,
+                    'concepto'   => 'Venta automática ID:' . $ventaId,
+                    'referencia' => null,
+                ]);
+            }
+            $this->bitacora->registrar($clave, "Venta registrada ID:{$ventaId} total:\${$total} método:{$cabecera['metodo_pago']}", 'C');
             $this->json(['ok'=>true, 'venta_id'=>$ventaId, 'mensaje'=>'Venta registrada correctamente.']);
         } else {
             $this->bitacora->registrar($clave, "Error al registrar venta (total:\${$total})", 'E');

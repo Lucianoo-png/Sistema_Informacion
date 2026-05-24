@@ -40,10 +40,12 @@ class Venta {
                      (venta_id, codigoprod, cantidad, precio_unitario, subtotal)
                  VALUES (:vid, :cod, :cant, :pu, :sub)"
             );
+            // Solo reducir stock de productos NO pesables (kg/litro no trackean stock)
             $stmtStk = $this->db->prepare(
                 "UPDATE productos
-                    SET stock = stock - :cant
-                  WHERE codigoprod = :cod AND stock::numeric >= :cant2"
+                    SET stock = GREATEST(0, stock - :cant)
+                  WHERE codigoprod = :cod
+                    AND unidad NOT IN ('kg', 'litro')"
             );
 
             foreach ($detalle as $it) {
@@ -55,9 +57,8 @@ class Venta {
                     ':sub'  => $it['subtotal'],
                 ]);
                 $stmtStk->execute([
-                    ':cant'  => $it['cantidad'],
-                    ':cant2' => $it['cantidad'],
-                    ':cod'   => $it['codigoprod'],
+                    ':cant' => 1,   // siempre 1 para productos normales; pesables no se descuentan
+                    ':cod'  => $it['codigoprod'],
                 ]);
             }
 

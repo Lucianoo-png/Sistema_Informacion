@@ -42,16 +42,28 @@ class Producto {
         return $stmt->fetch() ?: null;
     }
 
-    // READ — stock bajo (stock ≤ stock_minimo)
+    // READ — stock bajo (solo productos que NO son kg ni litro)
+    // Los productos pesables no tienen alerta de stock
+    private string $sqlNoKg = "unidad NOT IN ('kg', 'litro') AND stock IS NOT NULL AND stock_minimo IS NOT NULL";
+
     public function stockBajo(): array {
         return $this->db->query(
-            "SELECT * FROM productos WHERE stock <= stock_minimo ORDER BY stock ASC"
+            "SELECT * FROM productos
+              WHERE unidad NOT IN ('kg', 'litro')
+                AND stock IS NOT NULL
+                AND stock_minimo IS NOT NULL
+                AND stock <= stock_minimo
+              ORDER BY stock ASC"
         )->fetchAll();
     }
 
     public function contarStockBajo(): int {
         return (int) $this->db->query(
-            "SELECT COUNT(*) FROM productos WHERE stock <= stock_minimo"
+            "SELECT COUNT(*) FROM productos
+              WHERE unidad NOT IN ('kg', 'litro')
+                AND stock IS NOT NULL
+                AND stock_minimo IS NOT NULL
+                AND stock <= stock_minimo"
         )->fetchColumn();
     }
 
@@ -70,8 +82,8 @@ class Producto {
             ':cat'    => $d['categoria']    ?? null,
             ':pc'     => $d['precio_compra'],
             ':pv'     => $d['precio_venta'],
-            ':stock'  => $d['stock']        ?? 0,
-            ':smin'   => $d['stock_minimo'] ?? 3,
+            ':stock'  => (int)($d['stock'] ?? 0),
+            ':smin'   => (int)($d['stock_minimo'] ?? 3),
             ':unidad' => $d['unidad']       ?? 'pieza',
         ]);
     }
@@ -95,8 +107,8 @@ class Producto {
             ':cat'    => $d['categoria']    ?? null,
             ':pc'     => $d['precio_compra'],
             ':pv'     => $d['precio_venta'],
-            ':stock'  => $d['stock']        ?? 0,
-            ':smin'   => $d['stock_minimo'] ?? 3,
+            ':stock'  => (int)($d['stock'] ?? 0),
+            ':smin'   => (int)($d['stock_minimo'] ?? 3),
             ':unidad' => $d['unidad']       ?? 'pieza',
         ]);
     }

@@ -150,11 +150,11 @@ abrirLayout('Inventario', 'inventario');
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-cubes" style="color:var(--primary)"></i> Stock actual <span id="lbl-stock-hint" style="font-size:10px;color:var(--text-muted)">(unidades)</span></label>
-                    <input type="number" class="form-control" name="stock" id="prod-stock" min="0" step="0.001" placeholder="0">
+                    <input type="number" class="form-control" name="stock" id="prod-stock" min="0" step="1" placeholder="0">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-triangle-exclamation" style="color:#d97706"></i> Stock mínimo</label>
-                    <input type="number" class="form-control" name="stock_minimo" id="prod-stock-min" min="0" placeholder="3 (opcional)">
+                    <input type="number" class="form-control" name="stock_minimo" id="prod-stock-min" min="0" step="1" placeholder="3">
                 </div>
             </div>
         </form>
