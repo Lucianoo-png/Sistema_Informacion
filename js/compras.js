@@ -8,7 +8,7 @@ let tipoActual  = 'proveedor';
 let _prodModal  = null;
 
 function fmt(n) {
-    return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return 'MX$' + parseFloat(n).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -27,7 +27,7 @@ function render() {
 
     if (!keys.length) {
         el.innerHTML    = '<p class="cart-empty">Agrega productos de la lista</p>';
-        tot.textContent = '$0.00';
+        tot.textContent = 'MX$0.00';
         btn.disabled    = true;
         return;
     }
@@ -38,6 +38,8 @@ function render() {
         const it = items[cod];
 
         if (it.tipo === 'peso') {
+            // Pesable: igual que ventas — precio grande con editar/listo
+            const bloqueado = !it.editando;
             return `
             <div class="cart-item">
               <div class="ci-top">
@@ -46,66 +48,79 @@ function render() {
                 </span>
                 <span class="ci-total">${fmt(it.subtotal)}</span>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                <div>
-                  <label style="font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.4px;display:block;margin-bottom:3px;">CANT. (kg)</label>
-                  <input type="number"
-                         value="${it.cantidad.toFixed(3)}"
-                         min="0.001" step="0.001"
-                         style="width:100%;padding:7px 8px;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;background:#fff;text-align:right;box-sizing:border-box;"
-                         oninput="updPesoCantidad('${cod}', this.value)">
+              <div style="background:#f5f0eb;border-radius:8px;padding:8px 10px;margin-top:6px;">
+                <div style="font-size:10px;color:var(--text-muted);font-weight:700;
+                            letter-spacing:.5px;margin-bottom:5px;">CANTIDAD · TOTAL PAGADO</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  ${bloqueado
+                    ? `<div style="flex:1;">
+                         <div style="font-size:16px;font-weight:800;color:var(--primary);">${fmt(it.subtotal)}</div>
+                         <div style="font-size:11px;color:var(--text-muted);">${it.cantidad.toFixed(3)} kg &middot; ${fmt(it.precio_unitario)}/kg</div>
+                       </div>`
+                    : `<div style="flex:1;display:flex;gap:6px;">
+                         <input type="number" value="${it.cantidad.toFixed(3)}" min="0.001" step="0.001"
+                                placeholder="kg"
+                                style="flex:1;min-width:0;padding:5px 8px;font-size:13px;font-weight:600;
+                                       border:2px solid var(--primary);border-radius:7px;
+                                       text-align:right;background:#fff;box-sizing:border-box;"
+                                oninput="updPesoCantidad('${cod}',this.value)">
+                         <input type="number" value="${it.subtotal.toFixed(2)}" min="0.01" step="0.5"
+                                placeholder="Total"
+                                style="flex:1;min-width:0;padding:5px 8px;font-size:13px;font-weight:600;
+                                       border:2px solid var(--primary);border-radius:7px;
+                                       text-align:right;background:#fff;box-sizing:border-box;"
+                                oninput="updPesoTotal('${cod}',this.value)">
+                       </div>`
+                  }
+                  <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end;">
+                    <button onclick="toggleEditarKgC('${cod}')"
+                            style="background:var(--primary);border:none;border-radius:6px;
+                                   cursor:pointer;font-size:11px;color:#fff;padding:4px 10px;
+                                   white-space:nowrap;user-select:none;">
+                      <i class="fa-solid fa-${bloqueado ? 'pen' : 'check'}"></i>
+                      ${bloqueado ? 'Editar' : 'Listo'}
+                    </button>
+                    <button onclick="quitar('${cod}')"
+                            style="background:none;border:none;color:var(--danger);
+                                   cursor:pointer;font-size:11px;padding:0;user-select:none;white-space:nowrap;">
+                      <i class="fa-solid fa-trash-can"></i> Quitar
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label style="font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.4px;display:block;margin-bottom:3px;">TOTAL PAGADO ($)</label>
-                  <input type="number"
-                         value="${it.subtotal.toFixed(2)}"
-                         min="0.01" step="0.50"
-                         style="width:100%;padding:7px 8px;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;background:#fff;text-align:right;box-sizing:border-box;"
-                         oninput="updPesoTotal('${cod}', this.value)">
-                </div>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;
-                          margin-top:6px;padding-top:5px;border-top:1px solid var(--border);">
-                <span style="font-size:11px;color:var(--text-muted);">${fmt(it.precio_unitario)}&nbsp;/&nbsp;kg</span>
-                <button onclick="quitar('${cod}')"
-                        style="background:none;border:none;color:var(--danger);cursor:pointer;
-                               font-size:11px;padding:0;user-select:none;white-space:nowrap;">
-                  <i class="fa-solid fa-trash-can"></i>&nbsp;Quitar
-                </button>
               </div>
             </div>`;
         } else {
+            // General: igual que ventas — precio + controles +/−
             return `
             <div class="cart-item">
-              <div class="ci-top">
+              <div class="ci-top" style="margin-bottom:0;">
                 <span class="ci-name">${esc(it.nombre)}</span>
-                <span class="ci-total">${fmt(it.subtotal)}</span>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                <div>
-                  <label style="font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.4px;display:block;margin-bottom:3px;">CANTIDAD</label>
-                  <input type="number"
-                         value="${it.cantidad}"
-                         min="1" step="1"
-                         style="width:100%;padding:7px 8px;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;background:#fff;text-align:right;box-sizing:border-box;"
-                         oninput="updCampo('${cod}','cantidad',this.value)">
+              <div style="display:flex;align-items:center;justify-content:space-between;
+                          gap:8px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border);">
+                <div style="display:flex;flex-direction:column;flex-shrink:0;gap:1px;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);
+                               white-space:nowrap;line-height:1.2;">${fmt(it.subtotal)}</span>
+                  <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;font-weight:500;display:flex;align-items:center;gap:3px;">
+                    <input type="number" value="${it.precio_unitario.toFixed(2)}" min="0" step="0.01"
+                           style="width:66px;padding:2px 5px;font-size:11px;font-weight:600;
+                                  border:1.5px solid var(--border);border-radius:5px;
+                                  text-align:right;background:#fff;box-sizing:border-box;"
+                           oninput="updCampo('${cod}','precio_unitario',this.value)"> c/u
+                  </span>
                 </div>
-                <div>
-                  <label style="font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.4px;display:block;margin-bottom:3px;">PRECIO / UNIT.</label>
-                  <input type="number"
-                         value="${it.precio_unitario.toFixed(2)}"
-                         min="0" step="0.01"
-                         style="width:100%;padding:7px 8px;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;background:#fff;text-align:right;box-sizing:border-box;"
-                         oninput="updCampo('${cod}','precio_unitario',this.value)">
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                  <div class="qty-ctrl">
+                    <button onclick="cambiarCant('${cod}',-1)" style="user-select:none;">−</button>
+                    <span>${it.cantidad}</span>
+                    <button onclick="cambiarCant('${cod}',+1)" style="user-select:none;">+</button>
+                  </div>
+                  <button onclick="quitar('${cod}')"
+                          style="background:none;border:none;color:var(--danger);
+                                 cursor:pointer;font-size:16px;padding:0 2px;user-select:none;">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
                 </div>
-              </div>
-              <div style="display:flex;justify-content:flex-end;margin-top:6px;
-                          padding-top:5px;border-top:1px solid var(--border);">
-                <button onclick="quitar('${cod}')"
-                        style="background:none;border:none;color:var(--danger);cursor:pointer;
-                               font-size:11px;padding:0;user-select:none;white-space:nowrap;">
-                  <i class="fa-solid fa-trash-can"></i>&nbsp;Quitar
-                </button>
               </div>
             </div>`;
         }
@@ -146,6 +161,23 @@ function updPesoTotal(cod, val) {
 }
 
 function quitar(cod) { delete items[cod]; render(); }
+
+// ── Toggle editar pesable en carrito compras ─────
+function toggleEditarKgC(cod) {
+    if (!items[cod]) return;
+    items[cod].editando = !items[cod].editando;
+    render();
+}
+
+// ── Cambiar cantidad de producto general ─────────
+function cambiarCant(cod, d) {
+    if (!items[cod]) return;
+    items[cod].cantidad = Math.max(1, items[cod].cantidad + d);
+    items[cod].subtotal = parseFloat(
+        (items[cod].cantidad * items[cod].precio_unitario).toFixed(2)
+    );
+    render();
+}
 
 // ── Agregar producto general ─────────────────────
 function agregarNormal(p) {
@@ -216,7 +248,8 @@ function confirmarMP() {
         tipo:           'peso',
         cantidad:       kg,
         precio_unitario: parseFloat((total / kg).toFixed(4)),  // $/kg calculado
-        subtotal:       parseFloat(total.toFixed(2))           // total pagado
+        subtotal:       parseFloat(total.toFixed(2)),          // total pagado
+        editando:       false
     };
     mostrarToast('✓ ' + p.nombre + ' — ' + fmt(total));
     cerrarMP(); render();

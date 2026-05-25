@@ -38,7 +38,7 @@ body.page-ventas .pag-wrap-lg { max-width: none !important; margin: 0 !important
 .prow-stock { font-size:12px; white-space:nowrap; text-align:right; }
 .prow-stock.ok  { color:var(--success); }
 .prow-stock.low { color:var(--danger); font-weight:700; }
-.btn-add { width:36px; height:36px; border-radius:8px; border:none; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; color:#fff; transition:opacity .15s,transform .1s; justify-self:end; }
+.btn-add { width:38px; height:38px; border-radius:9px; border:none; cursor:pointer; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; color:#fff; transition:opacity .15s,transform .1s; flex-shrink:0; }
 .btn-add:hover  { opacity:.85; }
 .btn-add:active { transform:scale(.92); }
 .btn-add:disabled { opacity:.3; cursor:not-allowed; }

@@ -22,7 +22,7 @@ function mostrarToast(msg, tipo = 'ok') {
 
 // ── FORMATO MONEDA ──────────────────────────────────
 function formatMXN(n) {
-  return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return '$' + parseFloat(n).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 // ══════════════════════════════════════════════════

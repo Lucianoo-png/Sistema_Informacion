@@ -154,7 +154,7 @@ abrirLayout('Reporte', 'reporte', BASE_URL . 'estilos/reporte_diario.css');
                         <span style="font-weight:500"><?= htmlspecialchars($mv['nombre']) ?></span>
                     </div>
                     <div style="text-align:right">
-                        <span style="font-weight:700"><?= number_format($mv['total_vendido'], 2) ?> uds.</span>
+                        <span style="font-weight:700"><?= number_format($mv['total_vendido'], 0, '.', ',') ?> uds.</span>
                         <span style="font-size:11px;color:var(--text-muted);margin-left:6px">
                             <?= formatMXN($mv['total_importe']) ?>
                         </span>

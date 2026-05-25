@@ -72,7 +72,7 @@ abrirLayout('Nueva Venta', 'ventas', BASE_URL . 'estilos/ventas.css');
                 <h1>Nueva Venta</h1>
                 <p>Selecciona productos para agregar al carrito</p>
             </div>
-            <a href="ventas/historial" class="btn btn-outline btn-sm">
+            <a href="<?= BASE_URL ?>ventas/historial" class="btn btn-outline btn-sm">
                 <i class="fa-solid fa-clock-rotate-left"></i> Historial
             </a>
         </div>

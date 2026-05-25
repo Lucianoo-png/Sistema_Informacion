@@ -332,6 +332,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   cursor: pointer; border: none;
   transition: opacity .15s, transform .1s;
   display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none;
 }
 .btn:active              { transform: scale(.97); }
 .btn-primary             { background: var(--primary); color: #fff; }
@@ -340,7 +341,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 .btn-outline             { background: #fff; border: 1.5px solid var(--border); color: var(--text-dark); }
 .btn-outline.active      { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-danger              { background: var(--danger); color: #fff; }
-.btn-sm                  { padding: 6px 12px; font-size: 12px; }
+.btn-sm                  { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
 .btn-icon                { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; transition: color .15s; }
 .btn-icon:hover          { color: var(--primary); }
 .btn-icon.del:hover      { color: var(--danger); }

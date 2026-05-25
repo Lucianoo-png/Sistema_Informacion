@@ -74,7 +74,7 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
     <h1><i class="fa-solid fa-box-open" style="color:var(--primary)"></i> Registrar Compra</h1>
     <p>Agrega los productos recibidos — el inventario se actualiza automáticamente</p>
   </div>
-  <a href="compras/historial" class="btn btn-outline btn-sm">
+  <a href="<?= BASE_URL ?>compras/historial" class="btn btn-outline btn-sm">
     <i class="fa-solid fa-clock-rotate-left"></i> Ver historial
   </a>
 </div>

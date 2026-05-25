@@ -136,6 +136,8 @@ switch ($seccion) {
     // ── API JSON (AJAX interno) ───────────────────
     case 'api':
         header('Content-Type: application/json');
+        require_once BASE_PATH . 'modelo/Venta.php';
+        require_once BASE_PATH . 'modelo/Compra.php';
         switch ($accion) {
             case 'productos':
                 $ctrl = new ProductoControlador();
@@ -161,6 +163,26 @@ switch ($seccion) {
                 $desde = $_GET['desde'] ?? date('Y-m-d');
                 $hasta = $_GET['hasta'] ?? date('Y-m-d');
                 echo json_encode($ctrl->reporteRango($desde, $hasta));
+                break;
+            // Detalle de una venta
+            case 'venta-detalle':
+                $vid = (int)($_GET['id'] ?? 0);
+                if ($vid > 0) {
+                    $modelo = new \Venta();
+                    echo json_encode($modelo->obtenerDetalle($vid));
+                } else {
+                    echo json_encode([]);
+                }
+                break;
+            // Detalle de una compra
+            case 'compra-detalle':
+                $cid = (int)($_GET['id'] ?? 0);
+                if ($cid > 0) {
+                    $modelo = new \Compra();
+                    echo json_encode($modelo->obtenerDetalle($cid));
+                } else {
+                    echo json_encode([]);
+                }
                 break;
             default:
                 echo json_encode(['error' => 'Endpoint no encontrado']);

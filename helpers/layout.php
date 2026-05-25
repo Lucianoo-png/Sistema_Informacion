@@ -60,7 +60,12 @@ function cerrarLayout(string $extraJs = ''): void {
       t._tmr = setTimeout(() => t.classList.remove("show"), 3200);
     }
     function formatMXN(n) {
-      return "$" + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      // Peso mexicano: separador de miles con coma, decimal con punto
+      const v = parseFloat(n) || 0;
+      return "MX$" + v.toLocaleString("es-MX", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
     }
   </script>
   ' . ($extraJs ? '<script src="' . $extraJs . '"></script>' : '') . '
@@ -70,7 +75,8 @@ function cerrarLayout(string $extraJs = ''): void {
 }
 
 function formatMXN(float $n): string {
-    return '$' . number_format($n, 2);
+    // Formato peso mexicano: MX$1,234.56
+    return 'MX$' . number_format($n, 2, '.', ',');
 }
 
 function fechaEspanol(string $fecha = ''): string {
