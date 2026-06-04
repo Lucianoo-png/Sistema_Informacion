@@ -84,5 +84,57 @@ class Cuenta {
         );
         return $stmt->execute([':clave' => $clave]);
     }
+
+    /**
+     * Guarda el token de sesión activa para un usuario.
+     * Si la columna no existe la crea la primera vez.
+     */
+    public function guardarTokenSesion(string $clave, string $token): void {
+        // 6.3.2 Gestión de claves: almacenar hash del token, nunca el token en claro
+        $tokenHash = hash('sha256', $token);
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE cuenta SET token_sesion = :token WHERE ClaveCuenta = :clave"
+            );
+            $stmt->execute([':token' => $tokenHash, ':clave' => $clave]);
+        } catch (\Exception $e) {
+            // Si la columna no existe todavía, crearla y reintentar
+            try {
+                $this->db->exec("ALTER TABLE cuenta ADD COLUMN IF NOT EXISTS token_sesion VARCHAR(128) DEFAULT NULL");
+                $stmt = $this->db->prepare(
+                    "UPDATE cuenta SET token_sesion = :token WHERE ClaveCuenta = :clave"
+                );
+                $stmt->execute([':token' => $token, ':clave' => $clave]);
+            } catch (\Exception $e2) {
+                error_log('Cuenta::guardarTokenSesion — ' . $e2->getMessage());
+            }
+        }
+    }
+
+    /** Obtiene el token de sesión activa almacenado para un usuario */
+    public function obtenerTokenSesion(string $clave): ?string {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT token_sesion FROM cuenta WHERE ClaveCuenta = :clave"
+            );
+            $stmt->execute([':clave' => $clave]);
+            $row = $stmt->fetch();
+            return $row ? ($row['token_sesion'] ?? null) : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /** Elimina el token de sesión al cerrar sesión */
+    public function limpiarTokenSesion(string $clave): void {
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE cuenta SET token_sesion = NULL WHERE ClaveCuenta = :clave"
+            );
+            $stmt->execute([':clave' => $clave]);
+        } catch (\Exception $e) {
+            error_log('Cuenta::limpiarTokenSesion — ' . $e->getMessage());
+        }
+    }
 }
 ?>

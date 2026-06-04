@@ -7,6 +7,11 @@
 $base  = defined('BASE_URL') ? BASE_URL : './';
 $error = $_SESSION['login_error'] ?? '';
 unset($_SESSION['login_error']);
+
+// Mensaje especial si fue desplazado por otra sesión
+if (($_GET['err'] ?? '') === 'sesion_desplazada') {
+    $error = 'Tu sesión fue cerrada porque la misma cuenta inició sesión en otro dispositivo.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,6 +33,7 @@ unset($_SESSION['login_error']);
     <?php endif; ?>
 
     <form method="POST" action="<?= $base ?>login">
+        <?= Csrf::campoHtml() ?>
         <div class="form-group">
             <label>Clave de Cuenta</label>
             <input type="text" name="clave" class="form-control"

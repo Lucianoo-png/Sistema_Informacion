@@ -10,8 +10,13 @@ $paginaActual = 'corte';
 $ctrl         = new ReporteControlador();
 
 $periodo = $_GET['periodo'] ?? 'hoy';
-$desde   = $_GET['desde']   ?? date('Y-m-d');
-$hasta   = $_GET['hasta']   ?? date('Y-m-d');
+$hoy     = date('Y-m-d');
+$desde   = $_GET['desde']   ?? $hoy;
+$hasta   = $_GET['hasta']   ?? $hoy;
+// Validar fechas de URL — nunca futuras, rango coherente
+if ($desde > $hoy) $desde = $hoy;
+if ($hasta > $hoy) $hasta = $hoy;
+if ($hasta < $desde) $hasta = $desde;
 
 if ($periodo !== 'personalizado') {
     [$desde, $hasta] = match($periodo) {
@@ -101,7 +106,7 @@ abrirLayout('Corte de Caja', 'corte', BASE_URL . 'estilos/corte_caja.css');
     </div>
     <div class="report-row">
         <div><i class="fa-solid fa-box" style="color:var(--danger)"></i>&ensp;Pagos a Proveedores / Compras</div>
-        <span class="amount-neg">-<?= formatMXN($datos['total_compras']) ?></span>
+        <span class="amount-neg"><?= formatMXN($datos['total_compras']) ?></span>
     </div>
 </div>
 

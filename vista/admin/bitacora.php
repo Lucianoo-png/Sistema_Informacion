@@ -1,8 +1,8 @@
 <?php
 // =====================================================
 // vista/admin/bitacora.php — Bitácora del sistema
-// NUEVO: Muestra auditoría con filtros
-//        Estructura basada en imagen de referencia
+// MODIFICADO: Solo muestra inicios de sesión y detalles de ventas/compras
+//             Sin sección de errores, fechas limitadas al día actual
 // =====================================================
 
 require_once BASE_PATH . 'helpers/layout.php';
@@ -11,25 +11,34 @@ require_once BASE_PATH . 'modelo/Cuenta.php';
 
 $paginaActual = 'bitacora';
 
-// Filtros
+$hoy       = date('Y-m-d');
+
+// Filtros — fecha no puede ser futura
 $filtFecha  = $_GET['fecha']  ?? '';
 $filtCuenta = $_GET['cuenta'] ?? '';
-$filtEstado = $_GET['estado'] ?? '';
+
+// Validar que la fecha no sea futura
+if ($filtFecha && $filtFecha > $hoy) {
+    $filtFecha = $hoy;
+}
 
 $ctrl     = new BitacoraControlador();
-$registros= $ctrl->obtener($filtFecha, $filtCuenta, $filtEstado);
+// Solo traer registros de tipo login y venta/compra (sin errores)
+$registros= $ctrl->obtenerRelevantes($filtFecha, $filtCuenta);
 $cuentas  = (new Cuenta())->obtenerTodas();
 $totalHoy = $ctrl->totalHoy();
-$errHoy   = $ctrl->erroresHoy();
 
 abrirLayout('Bitácora', 'bitacora');
 ?>
 <div class="pag-wrap-lg">
 
-<div class="page-header" style="margin-bottom:28px"><h1>Bitácora</h1><p>Auditoría de operaciones del sistema — <?= $filtFecha ? "Filtrando por: " . $filtFecha : "Todo el historial" ?></p>
+<div class="page-header" style="margin-bottom:28px">
+    <h1>Bitácora</h1>
+    <p>Historial de sesiones y operaciones — <?= $filtFecha ? "Filtrando: " . date('d/m/Y', strtotime($filtFecha)) : "Todo el historial" ?></p>
+</div>
 
-<!-- Resumen rápido -->
-<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+<!-- Resumen rápido — solo registros -->
+<div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:20px">
     <div class="stat-card">
         <div class="stat-icon orange"><i class="fa-solid fa-book"></i></div>
         <div>
@@ -41,14 +50,7 @@ abrirLayout('Bitácora', 'bitacora');
         <div class="stat-icon green"><i class="fa-solid fa-circle-check" style="color:var(--success)"></i></div>
         <div>
             <div class="stat-label">Completados hoy</div>
-            <div class="stat-value"><?= $totalHoy - $errHoy ?></div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background:#fff5f5"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <div>
-            <div class="stat-label">Errores hoy</div>
-            <div class="stat-value" style="color:var(--danger)"><?= $errHoy ?></div>
+            <div class="stat-value"><?= $totalHoy ?></div>
         </div>
     </div>
 </div>
@@ -59,9 +61,10 @@ abrirLayout('Bitácora', 'bitacora');
           style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
 
         <div class="form-group" style="margin:0;flex:1;min-width:150px">
-            <label>Fecha</label>
+            <label>Fecha (no puede ser futura)</label>
             <input type="date" name="fecha" class="form-control"
-                   value="<?= htmlspecialchars($filtFecha) ?>" placeholder="Todas las fechas">
+                   value="<?= htmlspecialchars($filtFecha) ?>"
+                   max="<?= $hoy ?>">
         </div>
 
         <div class="form-group" style="margin:0;flex:1;min-width:160px">
@@ -77,15 +80,6 @@ abrirLayout('Bitácora', 'bitacora');
             </select>
         </div>
 
-        <div class="form-group" style="margin:0;min-width:140px">
-            <label>Estado</label>
-            <select name="estado" class="form-control">
-                <option value="">Todos</option>
-                <option value="C" <?= $filtEstado==='C'?'selected':'' ?>>C — Completado</option>
-                <option value="E" <?= $filtEstado==='E'?'selected':'' ?>>E — Error</option>
-            </select>
-        </div>
-
         <button type="submit" class="btn btn-primary" style="height:40px">Filtrar</button>
         <a href="<?= BASE_URL ?>bitacora" class="btn btn-outline" style="height:40px">Limpiar</a>
     </form>
@@ -94,7 +88,8 @@ abrirLayout('Bitácora', 'bitacora');
 <!-- Tabla de bitácora -->
 <div class="card">
     <div class="card-title" style="margin-bottom:16px">
-        <i class="fa-solid fa-book" style="color:var(--primary)"></i> Registros — <span style="font-weight:400;color:#888;font-size:13px"><?= count($registros) ?> encontrados</span>
+        <i class="fa-solid fa-book" style="color:var(--primary)"></i> Registros —
+        <span style="font-weight:400;color:#888;font-size:13px"><?= count($registros) ?> encontrados</span>
     </div>
 
     <div class="table-wrapper">
@@ -106,50 +101,42 @@ abrirLayout('Bitácora', 'bitacora');
                     <th>Usuario</th>
                     <th>Descripción</th>
                     <th>Fecha y Hora</th>
-                    <th>Estado</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($registros)): ?>
-                <tr><td colspan="7" class="empty-state">Sin registros para los filtros seleccionados</td></tr>
+                <tr><td colspan="6" class="empty-state">Sin registros para los filtros seleccionados</td></tr>
                 <?php else: ?>
                 <?php foreach ($registros as $r): ?>
                 <?php
-                    // Extraer ID si la descripción menciona Venta o Compra registrada
-                    $detallLink = '';
                     $desc = $r['descripcion'] ?? '';
+                    $detallLink = '';
+                    $detallTipo = '';
+                    $detallId   = 0;
                     if (preg_match('/^Venta registrada ID:(\d+)/i', $desc, $m)) {
-                        $detallLink = BASE_URL . 'ventas/historial#v' . $m[1];
                         $detallTipo = 'venta';
                         $detallId   = (int)$m[1];
                     } elseif (preg_match('/^Compra registrada ID:(\d+)/i', $desc, $m)) {
-                        $detallLink = BASE_URL . 'compras/historial#c' . $m[1];
                         $detallTipo = 'compra';
                         $detallId   = (int)$m[1];
-                    } else {
-                        $detallTipo = '';
-                        $detallId   = 0;
                     }
                 ?>
                 <tr>
                     <td style="color:#888;font-size:12px"><?= $r['no_bitacora'] ?></td>
                     <td>
                         <code style="background:#f5f0eb;padding:2px 6px;border-radius:4px;font-size:12px">
-                            <?= htmlspecialchars($r['clave_cuenta']) ?>
+                            <?php if (!empty($r['clave_cuenta'])): ?>
+                                <?= htmlspecialchars($r['clave_cuenta']) ?>
+                            <?php else: ?>
+                                <span style="color:#aaa;font-style:italic;font-size:11px">Sistema</span>
+                            <?php endif; ?>
                         </code>
                     </td>
                     <td style="font-size:13px"><?= htmlspecialchars($r['usuario'] ?? '—') ?></td>
                     <td style="font-size:13px;max-width:280px"><?= htmlspecialchars($desc) ?></td>
                     <td style="color:#888;font-size:12px;white-space:nowrap">
                         <?= date('d/m/Y H:i:s', strtotime($r['fechayhora'])) ?>
-                    </td>
-                    <td>
-                        <?php if ($r['estado'] === 'C'): ?>
-                            <span class="badge-estado ok">C — Completado</span>
-                        <?php else: ?>
-                            <span class="badge-estado err">E — Error</span>
-                        <?php endif; ?>
                     </td>
                     <td>
                         <?php if ($detallTipo && $detallId): ?>

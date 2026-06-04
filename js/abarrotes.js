@@ -1,3 +1,28 @@
+
+// ── CSRF token (leído del meta tag, incluido en todos los fetch) ──
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+// Wrapper fetch que incluye automáticamente el CSRF header
+async function apiFetch(url, opciones = {}) {
+    // No forzar Content-Type cuando es FormData — el navegador lo pone con el boundary correcto
+    const esFormData = opciones.body instanceof FormData;
+    const headers = {
+        ...(esFormData ? {} : { 'Content-Type': 'application/json' }),
+        'X-CSRF-Token': CSRF_TOKEN,
+        ...(opciones.headers || {})
+    };
+    const resp = await fetch(url, { ...opciones, headers });
+    // Si el servidor rechaza por CSRF (403), recargar para obtener nuevo token
+    if (resp.status === 403) {
+        mostrarToast('Sesión expirada. Recargando...', 'err');
+        setTimeout(() => location.reload(), 1500);
+        // Devolver respuesta simulada para que el caller no falle
+        return new Response(JSON.stringify({ok:false, mensaje:'Sesión expirada. La página se recargará.'}),
+            {status: 200, headers: {'Content-Type': 'application/json'}});
+    }
+    return resp;
+}
+
 // =====================================================
 // js/abarrotes.js — Lógica frontend Abarrotes Angy
 // CORRECCIÓN: const BASE eliminada — ya la declara cerrarLayout() en layout.php
@@ -142,189 +167,3 @@ const Carrito = (() => {
 
   return { agregar, cambiar: cambiarCantidad, registrar: registrarVenta, setMetodo };
 })();
-
-// ══════════════════════════════════════════════════
-// MÓDULO: INVENTARIO
-// ══════════════════════════════════════════════════
-const Inventario = (() => {
-  function abrirModal(modo, datos = {}) {
-    const modal = document.getElementById('modal-producto');
-    if (!modal) return;
-    document.getElementById('modal-prod-titulo').textContent = modo === 'crear' ? 'Nuevo Producto' : 'Editar Producto';
-    document.getElementById('prod-id').value           = datos.id       ?? '';
-    document.getElementById('prod-codigo').value       = datos.codigo   ?? '';
-    document.getElementById('prod-nombre').value       = datos.nombre   ?? '';
-    document.getElementById('prod-categoria').value    = datos.categoria?? '';
-    document.getElementById('prod-p-compra').value     = datos.precio_compra ?? '';
-    document.getElementById('prod-p-venta').value      = datos.precio_venta  ?? '';
-    document.getElementById('prod-stock').value        = datos.stock    ?? '';
-    document.getElementById('prod-stock-min').value    = datos.stock_minimo ?? 5;
-    document.getElementById('prod-unidad').value       = datos.unidad   ?? 'pieza';
-    document.getElementById('prod-codigo').readOnly    = modo === 'editar';
-    modal.classList.add('open');
-  }
-
-  function cerrarModal() {
-    document.getElementById('modal-producto')?.classList.remove('open');
-  }
-
-  async function guardar() {
-    const id = document.getElementById('prod-id').value;
-    const accion = id ? 'actualizar' : 'crear';
-    const form = document.getElementById('form-producto');
-    const data = new FormData(form);
-
-    try {
-      const res  = await fetch(BASE + 'inventario/' + accion, { method: 'POST', body: data });
-      const resp = await res.json();
-      if (resp.ok) {
-        mostrarToast(resp.mensaje);
-        cerrarModal();
-        setTimeout(() => location.reload(), 900);
-      } else {
-        mostrarToast(resp.mensaje, 'err');
-      }
-    } catch(e) {
-      mostrarToast('Error de conexión', 'err');
-    }
-  }
-
-  async function eliminar(id, nombre) {
-    if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-    try {
-      const res  = await fetch(BASE + `inventario/eliminar/${id}`);
-      const resp = await res.json();
-      mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-      if (resp.ok) setTimeout(() => location.reload(), 900);
-    } catch(e) {
-      mostrarToast('Error de conexión', 'err');
-    }
-  }
-
-  return { abrirModal, cerrarModal, guardar, eliminar };
-})();
-
-// ══════════════════════════════════════════════════
-// MÓDULO: PROVEEDORES
-// ══════════════════════════════════════════════════
-const Proveedores = (() => {
-  function abrirModal(modo, datos = {}) {
-    const modal = document.getElementById('modal-proveedor');
-    if (!modal) return;
-    document.getElementById('modal-prov-titulo').textContent = modo === 'crear' ? 'Nuevo Proveedor' : 'Editar Proveedor';
-    document.getElementById('prov-id').value         = datos.id          ?? '';
-    document.getElementById('prov-nombre').value     = datos.nombre      ?? '';
-    document.getElementById('prov-telefono').value   = datos.telefono    ?? '';
-    // CORRECCIÓN: columna en BD es 'diavisita' (sin guión bajo), no 'dias_visita'
-    document.getElementById('prov-dias').value       = datos.diavisita ?? datos.DiaVisita ?? '';
-    modal.classList.add('open');
-  }
-  function cerrarModal() { document.getElementById('modal-proveedor')?.classList.remove('open'); }
-
-  async function guardar() {
-    const id     = document.getElementById('prov-id').value;
-    const accion = id ? 'actualizar' : 'crear';
-    const form   = document.getElementById('form-proveedor');
-    const data   = new FormData(form);
-    try {
-      const res  = await fetch(BASE + 'proveedores/' + accion, { method: 'POST', body: data });
-      const resp = await res.json();
-      mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-      if (resp.ok) { cerrarModal(); setTimeout(() => location.reload(), 900); }
-    } catch(e) { mostrarToast('Error de conexión', 'err'); }
-  }
-
-  async function eliminar(id, nombre) {
-    if (!confirm(`¿Eliminar proveedor "${nombre}"?`)) return;
-    try {
-      const res  = await fetch(BASE + `proveedores/eliminar/${id}`);
-      const resp = await res.json();
-      mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-      if (resp.ok) setTimeout(() => location.reload(), 900);
-    } catch(e) { mostrarToast('Error de conexión', 'err'); }
-  }
-
-  return { abrirModal, cerrarModal, guardar, eliminar };
-})();
-
-// ══════════════════════════════════════════════════
-// MÓDULO: COMPRAS
-// ══════════════════════════════════════════════════
-const Compras = (() => {
-  let tipo = 'proveedor';
-  let lineas = []; // array de {producto_id, cantidad, precio_unitario}
-
-  function setTipo(t) {
-    tipo = t;
-    document.querySelectorAll('.tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === t));
-    const provRow = document.getElementById('row-proveedor');
-    if (provRow) provRow.style.display = t === 'proveedor' ? '' : 'none';
-  }
-
-  function calcularTotal() {
-    return lineas.reduce((s, l) => s + (parseFloat(l.precio||0) * parseInt(l.cantidad||0)), 0);
-  }
-
-  async function registrar() {
-    // CORRECCIÓN: codigoprod (VARCHAR) en lugar del antiguo producto_id (INT)
-    const detalle = lineas.filter(l => l.codigoprod && l.cantidad > 0 && l.precio > 0).map(l => ({
-      codigoprod:     l.codigoprod,
-      cantidad:       parseFloat(l.cantidad),
-      precio_unitario:parseFloat(l.precio),
-    }));
-
-    if (detalle.length === 0) { mostrarToast('Agrega al menos un producto.', 'err'); return; }
-
-    const body = {
-      tipo,
-      proveedor_id: document.getElementById('sel-proveedor')?.value ?? 0,
-      nota: document.getElementById('compra-nota')?.value ?? '',
-      detalle,
-    };
-
-    try {
-      const res  = await fetch(BASE + 'compras/registrar', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-      });
-      const resp = await res.json();
-      mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-      if (resp.ok) setTimeout(() => location.reload(), 900);
-    } catch(e) { mostrarToast('Error de conexión', 'err'); }
-  }
-
-  return { setTipo, registrar, lineas };
-})();
-
-// ══════════════════════════════════════════════════
-// MÓDULO: TRANSFERENCIAS
-// ══════════════════════════════════════════════════
-const Transferencias = (() => {
-  async function registrar() {
-    const monto     = parseFloat(document.getElementById('tf-monto')?.value ?? 0);
-    const concepto  = document.getElementById('tf-concepto')?.value ?? '';
-    const referencia= document.getElementById('tf-referencia')?.value ?? '';
-
-    if (monto <= 0) { mostrarToast('El monto debe ser mayor a cero.', 'err'); return; }
-
-    try {
-      const res  = await fetch(BASE + 'transferencias/registrar', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ monto, concepto, referencia }),
-      });
-      const resp = await res.json();
-      mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-      if (resp.ok) setTimeout(() => location.reload(), 900);
-    } catch(e) { mostrarToast('Error de conexión', 'err'); }
-  }
-
-  return { registrar };
-})();
-
-// ── Búsqueda de productos en ventas / inventario ──
-function filtrarProductos(input, grid) {
-  const q = input.toLowerCase();
-  document.querySelectorAll(`#${grid} .product-card`).forEach(card => {
-    const txt = card.textContent.toLowerCase();
-    card.style.display = txt.includes(q) ? '' : 'none';
-  });
-}

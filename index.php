@@ -11,6 +11,10 @@ session_start();
 define('BASE_PATH', __DIR__ . '/');
 define('BASE_URL',  'http://' . $_SERVER['HTTP_HOST'] . '/AbarrotesAngy/');
 
+// ── Helpers de seguridad ──────────────────────────
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
+
 // ── Carga modelos y controladores ─────────────────
 require_once BASE_PATH . 'modelo/Conexion.php';
 require_once BASE_PATH . 'control/ProductoControlador.php';
@@ -52,6 +56,34 @@ if ($seccion === 'logout') {
 if (empty($_SESSION['usuario'])) {
     header('Location: ' . BASE_URL . 'login');
     exit;
+}
+
+// ── Generar/mantener token CSRF ──────────────────────
+Csrf::generar();
+
+// ── Validar sesión única (como WhatsApp) ─────────────
+// $_SESSION['session_token'] = session_id() raw
+// BD guarda hash('sha256', session_id())
+// Si otro perfil/dispositivo inició sesión, el hash en BD cambió
+// y esta sesión queda inválida automáticamente.
+if (!empty($_SESSION['usuario']) && !empty($_SESSION['session_token'])) {
+    try {
+        require_once BASE_PATH . 'modelo/Cuenta.php';
+        $cuentaModel = new Cuenta();
+        $hashEnBD    = $cuentaModel->obtenerTokenSesion($_SESSION['usuario']);
+        // Calcular hash del session_id guardado en esta sesión
+        $hashActual  = hash('sha256', $_SESSION['session_token']);
+
+        if ($hashEnBD !== null && $hashEnBD !== '' && !hash_equals($hashEnBD, $hashActual)) {
+            // Otro dispositivo/perfil inició sesión — esta sesión fue desplazada
+            session_destroy();
+            header('Location: ' . BASE_URL . 'login?err=sesion_desplazada');
+            exit;
+        }
+    } catch (\Throwable $e) {
+        // Si falla la consulta de BD, no bloquear (fail-open)
+        error_log('Session validation error: ' . $e->getMessage());
+    }
 }
 
 // ── Rutas protegidas ──────────────────────────────
@@ -142,6 +174,21 @@ switch ($seccion) {
             case 'productos':
                 $ctrl = new ProductoControlador();
                 echo json_encode($ctrl->listarTodos());
+                break;
+            // Stock en tiempo real — endpoint ligero para polling
+            case 'stock':
+                require_once BASE_PATH . 'modelo/Producto.php';
+                $modelo = new Producto();
+                $rows   = $modelo->obtenerTodos();
+                $stock  = [];
+                foreach ($rows as $p) {
+                    $stock[$p['codigoprod']] = [
+                        'stock' => $p['stock'],
+                        'unidad'=> $p['unidad'],
+                    ];
+                }
+                header('Cache-Control: no-store');
+                echo json_encode($stock);
                 break;
             case 'proveedores':
                 $ctrl = new ProveedorControlador();

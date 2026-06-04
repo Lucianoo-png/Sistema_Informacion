@@ -17,14 +17,15 @@ class Transferencia {
     public function registrar(array $d): bool {
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO transferencias (fecha, monto, concepto, referencia)
-                 VALUES (:fecha, :monto, :concepto, :ref)"
+                "INSERT INTO transferencias (fecha, monto, concepto, clave_cuenta, venta_id)
+                 VALUES (:fecha, :monto, :concepto, :clave, :venta_id)"
             );
             return $stmt->execute([
                 ':fecha'    => $d['fecha'],
                 ':monto'    => $d['monto'],
-                ':concepto' => $d['concepto']   ?? null,
-                ':ref'      => $d['referencia'] ?? null,
+                ':concepto' => !empty($d['concepto']) ? $d['concepto'] : null,
+                ':clave'    => $d['clave'] ?? null,
+                ':venta_id' => $d['venta_id'] ?? null,
             ]);
         } catch (\Exception $e) {
             error_log('Transferencia::registrar — ' . $e->getMessage());

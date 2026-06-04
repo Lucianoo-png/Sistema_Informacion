@@ -25,7 +25,7 @@ class Bitacora {
      * @param string $descripcion   Texto libre de la operación
      * @param string $estado        'C' completado | 'E' error
      */
-    public function registrar(string $claveCuenta, string $descripcion, string $estado = 'C'): bool {
+    public function registrar(?string $claveCuenta, string $descripcion, string $estado = 'C'): bool {
         // CORRECCIÓN: try/catch para que una FK violation (usuario no existe en cuenta)
         // o cualquier otro error de BD no lance una excepción no capturada que rompa
         // la respuesta JSON en VentaControlador / CompraControlador.
@@ -109,14 +109,67 @@ class Bitacora {
         return (int) $stmt->fetchColumn();
     }
 
-    /** Total de errores hoy */
-    public function erroresHoy(): int {
+    /** Total de registros relevantes hoy (login + venta + compra, sin errores) */
+    public function totalHoyRelevantes(): int {
         $stmt = $this->db->prepare(
             "SELECT COUNT(*) FROM bitacora
-              WHERE DATE(fechayhora) = CURRENT_DATE AND estado = 'E'"
+              WHERE DATE(fechayhora) = CURRENT_DATE
+                AND estado = 'C'
+                AND (descripcion ILIKE 'Inicio de sesión%'
+                  OR descripcion ILIKE 'Venta registrada%'
+                  OR descripcion ILIKE 'Compra registrada%'
+                  OR descripcion ILIKE 'Cierre de sesión%')"
         );
         $stmt->execute();
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Solo registros relevantes: inicios/cierres de sesión y ventas/compras registradas.
+     * Excluye errores y operaciones internas del sistema.
+     */
+    public function obtenerRelevantes(
+        string $fecha  = '',
+        string $cuenta = '',
+        int    $limite = 200
+    ): array {
+        $where  = [
+            "estado = 'C'",
+            "(descripcion ILIKE 'Inicio de sesión%'
+              OR descripcion ILIKE 'Venta registrada%'
+              OR descripcion ILIKE 'Compra registrada%'
+              OR descripcion ILIKE 'Cierre de sesión%')"
+        ];
+        $params = [];
+
+        if ($fecha) {
+            $where[]          = "DATE(fechayhora) = :fecha";
+            $params[':fecha'] = $fecha;
+        }
+        if ($cuenta) {
+            $where[]           = "clave_cuenta = :cuenta";
+            $params[':cuenta'] = $cuenta;
+        }
+
+        $sql = "SELECT b.no_bitacora,
+                       b.clave_cuenta,
+                       c.nombre || ' ' || c.apellidos AS usuario,
+                       b.descripcion,
+                       b.fechayhora,
+                       b.estado
+                  FROM bitacora b
+                  LEFT JOIN cuenta c ON b.clave_cuenta = c.clavecuenta"
+             . ' WHERE ' . implode(' AND ', $where)
+             . " ORDER BY b.fechayhora DESC
+                LIMIT :limite";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
 }
 ?>

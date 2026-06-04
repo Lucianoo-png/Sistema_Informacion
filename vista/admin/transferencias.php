@@ -28,7 +28,8 @@ abrirLayout('Transferencias', 'transferencias');
             <label>Monto</label>
             <div style="display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;background:#fff">
                 <span style="color:#888">$</span>
-                <input type="number" id="tf-monto" step="0.01" min="0.01" value="0.00"
+                <input type="number" id="tf-monto" step="0.01" min="1" max="1000" value="0.00"
+                       oninput="if(+this.value>1000)this.value=1000;if(this.value&&+this.value<0)this.value=0"
                        style="border:none;outline:none;flex:1;font-size:14px" placeholder="0.00">
             </div>
         </div>
@@ -36,11 +37,6 @@ abrirLayout('Transferencias', 'transferencias');
         <div class="form-group">
             <label>Concepto (opcional)</label>
             <input type="text" class="form-control" id="tf-concepto" placeholder="Ej: Pago de cliente...">
-        </div>
-
-        <div class="form-group">
-            <label>Referencia (opcional)</label>
-            <input type="text" class="form-control" id="tf-referencia" placeholder="Numero de referencia...">
         </div>
 
         <button class="btn btn-primary" style="width:100%;justify-content:center"
@@ -73,7 +69,6 @@ abrirLayout('Transferencias', 'transferencias');
                         <th>Hora</th>
                         <th>Monto</th>
                         <th>Concepto</th>
-                        <th>Referencia</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -83,9 +78,8 @@ abrirLayout('Transferencias', 'transferencias');
                         <td style="color:#888;font-size:13px">
                             <?= date('H:i', strtotime($tf['created_at'])) ?>
                         </td>
-                        <td class="price"><?= formatMXN($tf['monto']) ?></td>
+                        <td class="price" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px"><?= formatMXN($tf['monto']) ?></td>
                         <td><?= htmlspecialchars($tf['concepto'] ?? '—') ?></td>
-                        <td style="color:#888"><?= htmlspecialchars($tf['referencia'] ?? '—') ?></td>
                         <td>
                             <button class="btn-icon del"
                                     onclick="eliminarTransferencia(<?= $tf['id'] ?>)"><i class="fa-solid fa-trash-can"></i></button>

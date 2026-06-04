@@ -11,8 +11,13 @@ $paginaActual = 'ventas';
 $modelo = new Venta();
 
 // Filtros
+$hoy    = date('Y-m-d');
 $desde  = $_GET['desde']  ?? '';
 $hasta  = $_GET['hasta']  ?? '';
+// 6.2.1 Validar fechas recibidas por URL
+if ($desde && $desde > $hoy) $desde = $hoy;
+if ($hasta && $hasta > $hoy) $hasta = $hoy;
+if ($desde && $hasta && $hasta < $desde) $hasta = $desde;
 $metodo = $_GET['metodo'] ?? '';
 
 if ($desde || $hasta || $metodo) {

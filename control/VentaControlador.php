@@ -7,6 +7,8 @@
 
 require_once BASE_PATH . 'modelo/Venta.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
 
 class VentaControlador {
     private Venta         $modelo;
@@ -33,6 +35,9 @@ class VentaControlador {
 
     // CREATE — recibe JSON con {detalle:[{codigoprod,cantidad,precio_unitario,subtotal}], metodo_pago, nota}
     public function registrar(): void {
+        // 6.2.3 Verificar CSRF
+        Csrf::requerir(true);
+
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['detalle']) || !is_array($input['detalle'])) {
@@ -44,42 +49,61 @@ class VentaControlador {
         $detalle = [];
 
         foreach ($input['detalle'] as $it) {
-            $cant     = (float)$it['cantidad'];          // float: soporta kg (ej 0.350)
-            $subtotal = (float)$it['precio_unitario'] * $cant;
-            $total   += $subtotal;
+            try {
+                $cod  = Validar::codigoProd($it['codigoprod'] ?? '');
+                $cant = Validar::cantidad($it['cantidad'] ?? 0);
+                $pu   = Validar::monto($it['precio_unitario'] ?? 0, 0.01);
+            } catch (\InvalidArgumentException $e) {
+                $this->json(['ok'=>false,'mensaje'=>'Dato inválido en carrito: ' . $e->getMessage()]);
+                return;
+            }
+            $subtotal  = round($cant * $pu, 2);
+            $total    += $subtotal;
             $detalle[] = [
-                'codigoprod'      => $it['codigoprod'],
+                'codigoprod'      => $cod,
                 'cantidad'        => $cant,
-                'precio_unitario' => (float)$it['precio_unitario'],
+                'precio_unitario' => $pu,
                 'subtotal'        => $subtotal,
             ];
         }
 
+        // Total de venta no puede superar $500
+        if ($total > 500) {
+            $this->json(['ok'=>false,'mensaje'=>'El total de la venta no puede superar $500.00.']);
+            return;
+        }
+
         $cabecera = [
             'fecha'       => date('Y-m-d'),
-            'total'       => $total,
-            'metodo_pago' => $input['metodo_pago'] ?? 'efectivo',
-            'nota'        => $input['nota'] ?? null,
+            'total'       => round($total, 2),
+            'metodo_pago' => Validar::metodoPago($input['metodo_pago'] ?? 'efectivo'),
+            'nota'        => mb_substr(trim($input['nota'] ?? ''), 0, 200),
         ];
 
-        $ventaId = $this->modelo->registrar($cabecera, $detalle);
-        $clave   = $_SESSION['usuario'] ?? 'SIST0';
+        $clave   = $_SESSION['usuario'] ?? null;
+        $errMsg  = null;
+        $ventaId = $this->modelo->registrar($cabecera, $detalle, $errMsg);
 
         if ($ventaId) {
-            // Si el método de pago es transferencia, registrar automáticamente en la tabla transferencias
             if ($cabecera['metodo_pago'] === 'transferencia') {
+                $notaTransf = !empty($cabecera['nota'])
+                    ? $cabecera['nota']
+                    : 'Venta ID:' . $ventaId;
                 $this->modeloTransf->registrar([
-                    'fecha'      => $cabecera['fecha'],
-                    'monto'      => $total,
-                    'concepto'   => 'Venta automática ID:' . $ventaId,
-                    'referencia' => null,
+                    'fecha'    => $cabecera['fecha'],
+                    'monto'    => $total,
+                    'concepto' => $notaTransf,
+                    'clave'    => $clave,
+                    'venta_id' => $ventaId,
                 ]);
             }
             $this->bitacora->registrar($clave, "Venta registrada ID:{$ventaId} total:\${$total} método:{$cabecera['metodo_pago']}", 'C');
             $this->json(['ok'=>true, 'venta_id'=>$ventaId, 'mensaje'=>'Venta registrada correctamente.']);
         } else {
-            $this->bitacora->registrar($clave, "Error al registrar venta (total:\${$total})", 'E');
-            $this->json(['ok'=>false,'mensaje'=>'Error al registrar la venta.']);
+            // Usar mensaje del trigger/BD si está disponible
+            $mensajeError = $errMsg ?: 'Error al registrar la venta. Verifica el stock.';
+            $this->bitacora->registrar($clave, "Error al registrar venta: {$mensajeError}", 'E');
+            $this->json(['ok'=>false, 'mensaje'=>$mensajeError]);
         }
     }
 

@@ -189,8 +189,8 @@ abrirLayout('Nueva Venta', 'ventas', BASE_URL . 'estilos/ventas.css');
     <div class="cart-footer">
         <div class="cart-footer-inner">
             <div class="cart-total-row">
-                <span class="cart-total-label">Total</span>
-                <span class="cart-total-val" id="cart-total">$0.00</span>
+                <span class="cart-total-label" style="white-space:nowrap;flex-shrink:0">Total</span>
+                <span class="cart-total-val" id="cart-total" style="overflow-wrap:anywhere;word-break:break-all;min-width:0;max-width:70%;text-align:right">$0.00</span>
             </div>
 
             <!-- Método de pago -->
@@ -206,22 +206,48 @@ abrirLayout('Nueva Venta', 'ventas', BASE_URL . 'estilos/ventas.css');
                 </div>
             </div>
 
-            <!-- Nota -->
+            <!-- Panel efectivo: monto recibido y cambio -->
+            <div id="panel-efectivo" style="margin-bottom:8px">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:4px">MONTO RECIBIDO <span style="color:var(--danger)">*</span></div>
+                <input type="number" id="monto-recibido" min="0" max="500" step="1"
+                       placeholder="$ 0.00"
+                       style="width:100%;box-sizing:border-box;padding:8px 10px;
+                              border:1.5px solid var(--border);border-radius:8px;
+                              font-size:15px;font-weight:700;color:var(--text-dark);
+                              background:#fff;margin-bottom:6px"
+                       oninput="calcCambio()">
+                <div id="cambio-row"
+                     style="display:none;justify-content:space-between;align-items:center;
+                            background:#f0faf4;border-radius:8px;padding:7px 10px">
+                    <span style="font-size:12px;font-weight:600;color:#38a169">CAMBIO</span>
+                    <span id="cambio-val" style="font-size:16px;font-weight:800;color:#38a169">$0.00</span>
+                </div>
+                <div id="cambio-insuf"
+                     style="display:none;background:#fff5f5;border-radius:8px;
+                            padding:7px 10px;font-size:12px;font-weight:700;color:#e53e3e">
+                    ⚠ Monto insuficiente
+                </div>
+            </div>
+
+
+            <!-- Comentario -->
             <textarea id="venta-nota" class="nota-input"
-                      style="min-height:52px;max-height:80px;margin-bottom:0"
+                      style="min-height:46px;max-height:70px;margin-bottom:0"
                       placeholder="Comentario..."></textarea>
         </div>
 
-        <!-- Botón edge-to-edge: ocupa todo el ancho sin padding lateral -->
+        <!-- Botón edge-to-edge -->
         <button id="btn-registrar" disabled
                 style="width:100%; height:58px; border:none; border-radius:0;
                        background:var(--primary); color:#fff; font-size:15px;
-                       font-weight:700; cursor:pointer; position:relative;
-                       transition:opacity .15s; user-select:none; -webkit-user-select:none;">
-            <span style="pointer-events:none; position:absolute; inset:0;
-                         display:flex; align-items:center; justify-content:center; gap:8px;">
-                <i class="fa-solid fa-circle-check" style="font-size:17px"></i> Registrar Venta
-            </span>
+                       font-weight:700; cursor:pointer; display:flex;
+                       align-items:center; justify-content:center; gap:8px;
+                       transition:background .15s,opacity .15s;
+                       user-select:none; -webkit-user-select:none;
+                       pointer-events:auto;">
+            <i class="fa-solid fa-circle-check"
+               style="font-size:17px; pointer-events:none;"></i>
+            <span style="pointer-events:none;">Registrar Venta</span>
         </button>
     </div>
 </div>

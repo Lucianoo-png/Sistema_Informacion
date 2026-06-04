@@ -12,8 +12,13 @@ $ctrl         = new ReporteControlador();
 
 // Determinar rango
 $periodo = $_GET['periodo'] ?? 'hoy';
-$desde   = $_GET['desde']   ?? date('Y-m-d');
-$hasta   = $_GET['hasta']   ?? date('Y-m-d');
+$hoy     = date('Y-m-d');
+$desde   = $_GET['desde']   ?? $hoy;
+$hasta   = $_GET['hasta']   ?? $hoy;
+// Validar fechas de URL — nunca futuras, rango coherente
+if ($desde > $hoy) $desde = $hoy;
+if ($hasta > $hoy) $hasta = $hoy;
+if ($hasta < $desde) $hasta = $desde;
 
 if ($periodo !== 'personalizado') {
     [$desde, $hasta] = match($periodo) {
@@ -124,7 +129,7 @@ abrirLayout('Reporte', 'reporte', BASE_URL . 'estilos/reporte_diario.css');
         </div>
         <div class="report-row" style="background:#fff5f5;border-radius:8px;margin-top:8px">
             <span style="color:var(--danger)"><i class="fa-solid fa-box"></i> Total Compras</span>
-            <span style="color:var(--danger)">-<?= formatMXN($datos['total_compras']) ?></span>
+            <span style="color:var(--danger)"><?= formatMXN($datos['total_compras']) ?></span>
         </div>
         <div class="report-row" style="margin-top:8px">
             <strong>Balance del período</strong>

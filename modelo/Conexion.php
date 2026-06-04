@@ -34,11 +34,11 @@ class Conexion {
             $this->pdo->exec("SET search_path TO \"{$this->schema}\", public");
             $this->pdo->exec("SET client_encoding TO 'UTF8'");
 
-            // Exponer usuario activo a los triggers de BD (fn_usuario_sesion)
-            $usuario = (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['usuario']))
-                     ? $_SESSION['usuario'] : 'SIST0';
-            $usuario = preg_replace('/[^A-Z0-9]/', '', strtoupper($usuario));
-            $this->pdo->exec("SET app.usuario = '" . substr($usuario, 0, 5) . "'");
+            // Exponer usuario a triggers de auditoría en BD
+            if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['usuario'])) {
+                $usr = preg_replace('/[^A-Z0-9]/', '', strtoupper($_SESSION['usuario']));
+                $this->pdo->exec("SET app.usuario = '" . substr($usr, 0, 5) . "'");
+            }
 
         } catch (PDOException $e) {
             // En producción evitar exponer el mensaje al cliente

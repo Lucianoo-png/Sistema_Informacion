@@ -76,13 +76,17 @@ abrirLayout('Panel Principal', 'panel');
             <?php foreach (array_slice($datos['ventas_recientes'], 0, 5) as $v): ?>
             <div class="report-row">
                 <div>
-                    <div style="font-weight:500"><?= htmlspecialchars($v['productos'] ?? 'Venta') ?></div>
-                    <div style="font-size:12px;color:#888">
-                        <i class="fas fa-<?= $v['metodo_pago']==='efectivo'?'money-bill-wave':'exchange-alt' ?>" style="color:var(--primary)"></i>
+                    <!-- Productos con cantidad: "cerveza x7, Cigarros x16" -->
+                    <div style="font-weight:500;font-size:13px;line-height:1.4">
+                        <?= htmlspecialchars($v['productos'] ?? 'Venta') ?>
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-top:2px">
+                        <i class="fas fa-<?= $v['metodo_pago']==='efectivo'?'money-bill-wave':'exchange-alt' ?>"
+                           style="color:var(--primary)"></i>
                         <?= ucfirst($v['metodo_pago']) ?>
                     </div>
                 </div>
-                <div class="price"><?= formatMXN($v['total']) ?></div>
+                <div class="price" style="white-space:nowrap"><?= formatMXN($v['total']) ?></div>
             </div>
             <?php endforeach; ?>
         <?php endif; ?>
@@ -98,13 +102,18 @@ abrirLayout('Panel Principal', 'panel');
             <?php foreach (array_slice($datos['compras_recientes'], 0, 5) as $c): ?>
             <div class="report-row">
                 <div>
-                    <div style="font-weight:500"><?= htmlspecialchars($c['proveedor_nombre']) ?></div>
-                    <div style="font-size:12px;color:#888">
+                    <!-- Productos comprados con cantidad -->
+                    <?php if (!empty($c['productos'])): ?>
+                    <div style="font-weight:500;font-size:13px;line-height:1.4">
+                        <?= htmlspecialchars($c['productos']) ?>
+                    </div>
+                    <?php endif; ?>
+                    <div style="font-size:12px;color:#888;margin-top:2px">
                         <i class="fa-solid fa-truck" style="color:var(--primary)"></i>
-                        <?= ucfirst($c['tipo']) ?>
+                        <?= htmlspecialchars($c['proveedor_nombre']) ?>
                     </div>
                 </div>
-                <div class="price"><?= formatMXN($c['total']) ?></div>
+                <div class="price" style="white-space:nowrap"><?= formatMXN($c['total']) ?></div>
             </div>
             <?php endforeach; ?>
         <?php endif; ?>

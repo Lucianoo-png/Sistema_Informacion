@@ -7,6 +7,8 @@
 
 require_once BASE_PATH . 'modelo/Producto.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
 
 class ProductoControlador {
     private Producto $modelo;
@@ -27,39 +29,50 @@ class ProductoControlador {
 
     // CREATE
     public function crear(): void {
-        $d = [
-            'codigoprod'    => strtoupper(trim($_POST['codigoprod']   ?? '')),
-            'nombre'        => trim($_POST['nombre']       ?? ''),
-            'categoria'     => trim($_POST['categoria']    ?? ''),
-            'precio_compra' => (float)($_POST['precio_compra'] ?? 0),
-            'precio_venta'  => (float)($_POST['precio_venta']  ?? 0),
-            'stock'         => (int)($_POST['stock']       ?? 0),
-            'stock_minimo'  => (int)($_POST['stock_minimo']?? 3),
-            'unidad'        => trim($_POST['unidad']       ?? 'pieza'),
-        ];
-
-        if (empty($d['codigoprod']) || empty($d['nombre'])) {
-            $this->json(['ok'=>false,'mensaje'=>'Código y nombre son obligatorios.']);
+        Csrf::requerir(true); // formulario POST normal
+        try {
+            $d = [
+                'codigoprod'    => Validar::codigoProd($_POST['codigoprod'] ?? ''),
+                'nombre'        => Validar::texto($_POST['nombre'] ?? '', 1, 100),
+                'categoria'     => Validar::texto($_POST['categoria'] ?? '', 0, 50, false),
+                'precio_compra' => Validar::monto($_POST['precio_compra'] ?? 0, 0, 1000.0),
+                'precio_venta'  => Validar::monto($_POST['precio_venta']  ?? 0, 0, 500.0),
+                'stock'         => Validar::enteroPositivo($_POST['stock'] ?? 0, 0, 20),
+                'stock_minimo'  => Validar::enteroPositivo($_POST['stock_minimo'] ?? 3, 0, 20),
+                'unidad'        => Validar::unidad($_POST['unidad'] ?? 'pieza'),
+                'proveedor_sugerido'  => !empty($_POST['proveedor_sugerido']) ? (int)$_POST['proveedor_sugerido'] : null,
+                'proveedor_exclusivo' => !empty($_POST['proveedor_exclusivo']),
+            ];
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['ok'=>false,'mensaje'=>$e->getMessage()]);
             return;
         }
 
         $ok = $this->modelo->crear($d);
         $this->logBitacora($ok, "Producto creado: {$d['codigoprod']} - {$d['nombre']}", "Error al crear producto {$d['codigoprod']}");
-        $this->json(['ok'=>$ok, 'mensaje'=> $ok ? 'Producto creado.' : 'Error: ¿código duplicado?']);
+        $this->json(['ok'=>$ok, 'mensaje'=> $ok ? 'Producto creado.' : 'Error al crear. Verifica que el código no esté duplicado o ejecuta el SQL de proveedor_exclusivo.']);
     }
 
     // UPDATE
     public function actualizar(): void {
-        $codigo = strtoupper(trim($_POST['codigoprod'] ?? ''));
-        $d = [
-            'nombre'        => trim($_POST['nombre']       ?? ''),
-            'categoria'     => trim($_POST['categoria']    ?? ''),
-            'precio_compra' => (float)($_POST['precio_compra'] ?? 0),
-            'precio_venta'  => (float)($_POST['precio_venta']  ?? 0),
-            'stock'         => (int)($_POST['stock']       ?? 0),
-            'stock_minimo'  => (int)($_POST['stock_minimo']?? 3),
-            'unidad'        => trim($_POST['unidad']       ?? 'pieza'),
-        ];
+        Csrf::requerir(true);
+        try {
+            $codigo = Validar::codigoProd($_POST['codigoprod'] ?? '');
+            $d = [
+                'nombre'        => Validar::texto($_POST['nombre'] ?? '', 1, 100),
+                'categoria'     => Validar::texto($_POST['categoria'] ?? '', 0, 50, false),
+                'precio_compra' => Validar::monto($_POST['precio_compra'] ?? 0, 0, 1000.0),
+                'precio_venta'  => Validar::monto($_POST['precio_venta']  ?? 0, 0, 500.0),
+                'stock'         => Validar::enteroPositivo($_POST['stock'] ?? 0, 0, 20),
+                'stock_minimo'  => Validar::enteroPositivo($_POST['stock_minimo'] ?? 3, 0, 20),
+                'unidad'        => Validar::unidad($_POST['unidad'] ?? 'pieza'),
+                'proveedor_sugerido'  => !empty($_POST['proveedor_sugerido']) ? (int)$_POST['proveedor_sugerido'] : null,
+                'proveedor_exclusivo' => !empty($_POST['proveedor_exclusivo']),
+            ];
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['ok'=>false,'mensaje'=>$e->getMessage()]);
+            return;
+        }
 
         $ok = $this->modelo->actualizar($codigo, $d);
         $this->logBitacora($ok, "Producto actualizado: $codigo", "Error al actualizar producto $codigo");
@@ -75,7 +88,7 @@ class ProductoControlador {
 
     // ── helpers ──────────────────────────────────────
     private function logBitacora(bool $ok, string $descOk, string $descErr): void {
-        $clave = $_SESSION['usuario'] ?? 'SIST0';
+        $clave = $_SESSION['usuario'] ?? null;
         try {
             $this->bitacora->registrar($clave, $ok ? $descOk : $descErr, $ok ? 'C' : 'E');
         } catch (\Exception) {}

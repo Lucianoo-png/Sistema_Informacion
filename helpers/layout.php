@@ -28,6 +28,7 @@ function abrirLayout(string $titulo, string $paginaActual, string $extraCss = ''
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="base-url" content="' . $base . '">
+  <meta name="csrf-token" content="' . htmlspecialchars(Csrf::obtener()) . '">
   <title>' . htmlspecialchars($titulo) . ' — Abarrotes Angy</title>
   <link rel="stylesheet" href="' . $cssUrl . '">
   ' . ($extraCss ? '<link rel="stylesheet" href="' . $extraCss . '">' : '') . '

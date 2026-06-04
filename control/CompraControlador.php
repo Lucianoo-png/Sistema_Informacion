@@ -6,6 +6,8 @@
 
 require_once BASE_PATH . 'modelo/Compra.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
 
 class CompraControlador {
     private Compra   $modelo;
@@ -27,8 +29,9 @@ class CompraControlador {
     // POST /compras/registrar
     // Payload: { tipo, proveedor_id, total, nota, detalle:[{codigoprod,cantidad,precio_unitario,subtotal}] }
     public function registrar(): void {
+        Csrf::requerir(true);
         $input = json_decode(file_get_contents('php://input'), true);
-        $clave = $_SESSION['usuario'] ?? 'SIST0';
+        $clave = $_SESSION['usuario'] ?? null;
 
         $total   = (float)($input['total']  ?? 0);
         $detalle = $input['detalle'] ?? [];
@@ -47,8 +50,7 @@ class CompraControlador {
             'proveedor_id' => !empty($input['proveedor_id']) ? (int)$input['proveedor_id'] : null,
             'tipo'         => $input['tipo'] ?? 'directa',
             'total'        => $total,
-            'nota'         => trim($input['nota'] ?? ''),
-            'descripcion'  => trim($input['nota'] ?? ''),
+            'nota'         => mb_substr(trim($input['nota'] ?? ''), 0, 200),
         ];
 
         // Con detalle de productos: transacción que actualiza stock

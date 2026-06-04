@@ -19,21 +19,29 @@ const Proveedores = (() => {
         if (!/^[0-9]{10}$/.test(tel)) {
             mostrarToast('El teléfono debe tener exactamente 10 dígitos.', 'err'); return;
         }
-        const id     = document.getElementById('prov-id').value;
-        const accion = id ? 'actualizar' : 'crear';
-        const data   = new FormData(document.getElementById('form-proveedor'));
+        const id        = document.getElementById('prov-id').value;
+        const accion    = id ? 'actualizar' : 'crear';
+        const data      = new FormData(document.getElementById('form-proveedor'));
+        const btnG      = document.querySelector('#modal-proveedor .btn-primary');
+        if (btnG) { btnG.disabled = true; btnG.textContent = 'Guardando...'; }
+        let exito = false;
         try {
-            const res  = await fetch(BASE + 'proveedores/' + accion, { method:'POST', body:data });
+            const res  = await apiFetch(BASE + 'proveedores/' + accion, { method:'POST', body:data });
             const resp = await res.json();
             mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
-            if (resp.ok) { cerrarModal(); setTimeout(() => location.reload(), 900); }
-        } catch(e) { mostrarToast('Error de conexión','err'); }
+            if (resp.ok) { exito = true; cerrarModal(); setTimeout(() => location.reload(), 900); }
+            // Si la página de compras también está abierta, se actualizará al recargar
+        } catch(e) {
+            mostrarToast('Error de conexión','err');
+        } finally {
+            if (!exito && btnG) { btnG.disabled = false; btnG.textContent = 'Guardar'; }
+        }
     }
 
     async function eliminar(id, nombre) {
         if (!confirm(`¿Eliminar proveedor "${nombre}"?`)) return;
         try {
-            const res  = await fetch(BASE + `proveedores/eliminar/${id}`);
+            const res  = await apiFetch(BASE + `proveedores/eliminar/${id}`);
             const resp = await res.json();
             mostrarToast(resp.mensaje, resp.ok ? 'ok' : 'err');
             if (resp.ok) setTimeout(() => location.reload(), 900);

@@ -31,30 +31,19 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
 <div class="mp-overlay" id="mp-overlay">
   <div class="mp-box">
     <h3 id="mp-nombre">Producto</h3>
-    <span class="mp-tag"><i class="fa-solid fa-scale-balanced"></i> Por peso (kg) — Compra</span>
+    <span class="mp-tag"><i class="fa-solid fa-leaf"></i> Compra por peso — precio pagado</span>
 
-    <!-- Campo 1: cantidad en kg -->
+    <!-- Solo precio total pagado -->
     <div class="mp-group">
-      <label>Cantidad comprada (kg)</label>
-      <input type="number" id="mp-kg" min="0.001" step="0.001"
-             placeholder="0.000" oninput="calcModalKg()">
+      <label>¿Cuánto pagaste? ($)</label>
+      <input type="number" id="mp-precio-total" min="0.01" max="10000" step="0.50"
+             placeholder="0.00"
+             oninput="if(+this.value>10000)this.value=10000; calcModalKg()">
     </div>
 
-    <!-- Campo 2: precio TOTAL pagado (no por kg) -->
-    <div class="mp-group">
-      <label>Precio total pagado ($)</label>
-      <input type="number" id="mp-precio-total" min="0.01" step="0.50"
-             placeholder="0.00" oninput="calcModalKg()">
-    </div>
-
-    <!-- Muestra equivalente $/kg calculado -->
-    <div id="mp-hint-pxkg" class="mp-hint" style="display:none">
-      — <span id="mp-pxkg-val"></span> / kg
-    </div>
-
-    <div class="mp-sub-box">
+    <div class="mp-sub-box" style="overflow:hidden">
       <span>Total</span>
-      <strong id="mp-sub">$0.00</strong>
+      <strong id="mp-sub" style="font-size:clamp(13px,3vw,20px);word-break:break-all;overflow-wrap:anywhere">$0.00</strong>
     </div>
 
     <div class="mp-btns">
@@ -101,7 +90,7 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
       <label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px">
         <i class="fa-solid fa-truck" style="color:var(--primary)"></i> Proveedor
       </label>
-      <select class="form-control" id="sel-proveedor">
+      <select class="form-control" id="sel-proveedor" onchange="document.getElementById('prov-sugerido-badge')?.remove()">
         <option value="">Seleccionar proveedor...</option>
         <?php foreach ($proveedores as $pv): ?>
         <option value="<?= $pv['id'] ?>"><?= htmlspecialchars($pv['nombre']) ?></option>
@@ -131,7 +120,7 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
 
   <?php if (!empty($pesables)): ?>
   <div class="grupo-hdr peso">
-    <i class="fa-solid fa-scale-balanced"></i> Pesables — precio por kg
+    <i class="fa-solid fa-leaf"></i> Pesables — precio por kg
     <span class="cnt"><?= count($pesables) ?></span>
   </div>
   <?php foreach ($pesables as $p):
@@ -149,11 +138,11 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
       <small>ref./kg</small>
     </div>
     <div class="prow-stk">
-      <i class="fa-solid fa-scale-balanced" style="color:var(--success)"></i>
+      <i class="fa-solid fa-leaf" style="color:var(--success)"></i>
       <?= number_format((float)$p['stock'], 2) ?> kg
     </div>
-    <button class="btn-add peso" data-prod="<?= $dj ?>" title="Ingresar kg y precio total">
-      <i class="fa-solid fa-scale-balanced"></i>
+    <button class="btn-add peso" data-prod="<?= $dj ?>" title="Registrar precio pagado">
+      <i class="fa-solid fa-bag-shopping"></i>
     </button>
   </div>
   <?php endforeach; ?>
@@ -206,23 +195,26 @@ abrirLayout('Compras', 'compras', BASE_URL . 'estilos/compras.css');
     <div class="cart-footer-inner">
       <div class="cart-total-row">
         <span class="cart-total-label">Total compra</span>
-        <span class="cart-total-val" id="cart-total">$0.00</span>
+        <span class="cart-total-val" id="cart-total" style="font-size:clamp(14px,3vw,22px);word-break:break-all;overflow-wrap:anywhere;max-width:100%">$0.00</span>
       </div>
-      <textarea id="inp-nota" class="nota-input"
+      <textarea id="inp-nota" class="nota-input" maxlength="300"
                 style="min-height:44px;max-height:68px;margin-bottom:0"
+                oninput="actualizarContadorNota(this)"
                 placeholder="Nota / descripción (opcional)..."></textarea>
+      <div id="nota-counter" style="font-size:10px;color:var(--text-muted);text-align:right;margin-top:2px">0/300</div>
     </div>
 
     <!-- Botón edge-to-edge: ocupa todo el ancho sin padding lateral -->
     <button id="btn-registrar" disabled
             style="width:100%; height:58px; border:none; border-radius:0;
                    background:var(--primary); color:#fff; font-size:15px;
-                   font-weight:700; cursor:pointer; position:relative;
-                   transition:opacity .15s; user-select:none; -webkit-user-select:none;">
-      <span style="pointer-events:none; position:absolute; inset:0;
-                   display:flex; align-items:center; justify-content:center; gap:8px;">
-        <i class="fa-solid fa-circle-check" style="font-size:17px"></i> Registrar Compra
-      </span>
+                   font-weight:700; cursor:pointer; display:flex;
+                   align-items:center; justify-content:center; gap:8px;
+                   transition:background .15s,opacity .15s;
+                   user-select:none; -webkit-user-select:none; pointer-events:auto;">
+      <i class="fa-solid fa-circle-check"
+         style="font-size:17px; pointer-events:none;"></i>
+      <span style="pointer-events:none;">Registrar Compra</span>
     </button>
   </div>
 </div>

@@ -1,10 +1,13 @@
 <?php
 // =====================================================
 // control/CuentaControlador.php — Login / Logout
+// MODIFICADO: Previene sesiones dobles con token de sesión
 // =====================================================
 
 require_once BASE_PATH . 'modelo/Cuenta.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
 
 class CuentaControlador {
     private Cuenta   $modelo;
@@ -17,8 +20,20 @@ class CuentaControlador {
 
     /** Procesa el formulario de login (POST) */
     public function login(): void {
-        $clave  = trim($_POST['clave']       ?? '');
-        $pass   = trim($_POST['contrasena']  ?? '');
+        // 6.2.3 CSRF en formulario de login
+        if (!Csrf::verificarPost()) {
+            $this->redirigirConError('Token de seguridad inválido. Intenta de nuevo.');
+            return;
+        }
+        Csrf::rotar();
+
+        try {
+            $clave = Validar::claveCuenta($_POST['clave'] ?? '');
+        } catch (\InvalidArgumentException $e) {
+            $this->redirigirConError('Clave o contraseña incorrecta.');
+            return;
+        }
+        $pass = mb_substr(trim($_POST['contrasena'] ?? ''), 0, 72); // bcrypt max
 
         if (!$clave || !$pass) {
             $this->redirigirConError('Completa todos los campos.');
@@ -28,10 +43,22 @@ class CuentaControlador {
         $cuenta = $this->modelo->autenticar($clave, $pass);
 
         if ($cuenta) {
+            $claveSesion = $cuenta['ClaveCuenta'] ?? $cuenta['clavecuenta'];
+
+            // Contraseña correcta → siempre permitir entrar.
+            // El token nuevo sobreescribe cualquier sesión anterior (como WhatsApp).
+            // El dispositivo anterior quedará invalidado en su próximo request.
+
             // Iniciar sesión
-            $_SESSION['usuario']  = $cuenta['ClaveCuenta'] ?? $cuenta['clavecuenta'];
-            $_SESSION['nombre']   = $cuenta['Nombre']      ?? $cuenta['nombre'];
-            $_SESSION['apellidos']= $cuenta['Apellidos']   ?? $cuenta['apellidos'];
+            $_SESSION['usuario']       = $claveSesion;
+            $_SESSION['nombre']        = $cuenta['Nombre']      ?? $cuenta['nombre'];
+            $_SESSION['apellidos']     = $cuenta['Apellidos']   ?? $cuenta['apellidos'];
+            // Guardar session_id sin hashear en sesión
+            // El modelo lo hashea al guardarlo en BD
+            $_SESSION['session_token'] = session_id();
+
+            // Guardar hash del session_id en BD
+            $this->modelo->guardarTokenSesion($claveSesion, session_id());
 
             // Registrar en bitácora
             $this->bitacora->registrar(
@@ -44,8 +71,7 @@ class CuentaControlador {
             exit;
         }
 
-        // Credenciales incorrectas — intentar registrar error en bitácora
-        // (puede fallar si la clave no existe, lo ignoramos)
+        // Credenciales incorrectas
         try {
             $this->bitacora->registrar(
                 $clave,
@@ -65,6 +91,8 @@ class CuentaControlador {
                 "Cierre de sesión.",
                 'C'
             );
+            // Limpiar token de sesión en BD para permitir nuevo login
+            $this->modelo->limpiarTokenSesion($_SESSION['usuario']);
         }
         session_destroy();
         header('Location: ' . BASE_URL . 'login');
@@ -78,6 +106,7 @@ class CuentaControlador {
 
     /** Crear cuenta nueva */
     public function crear(): void {
+        Csrf::requerir(true);
         $d = [
             'clave'      => strtoupper(trim($_POST['clave']     ?? '')),
             'contrasena' => trim($_POST['contrasena'] ?? ''),

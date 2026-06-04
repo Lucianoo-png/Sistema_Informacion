@@ -5,6 +5,8 @@
 
 require_once BASE_PATH . 'modelo/Transferencia.php';
 require_once BASE_PATH . 'modelo/Bitacora.php';
+require_once BASE_PATH . 'helpers/Csrf.php';
+require_once BASE_PATH . 'helpers/Validar.php';
 
 class TransferenciaControlador {
     private Transferencia $modelo;
@@ -25,11 +27,13 @@ class TransferenciaControlador {
 
     // CREATE
     public function registrar(): void {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $monto = (float)($input['monto'] ?? 0);
+        Csrf::requerir(true);
 
-        if ($monto <= 0) {
-            $this->json(['ok'=>false,'mensaje'=>'El monto debe ser mayor a cero.']);
+        $input = json_decode(file_get_contents('php://input'), true);
+        try {
+            $monto = Validar::monto($input['monto'] ?? 0, 1.0, 1000.0);
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['ok'=>false,'mensaje'=>$e->getMessage()]);
             return;
         }
 
@@ -40,7 +44,7 @@ class TransferenciaControlador {
             'referencia' => trim($input['referencia'] ?? ''),
         ];
         $ok    = $this->modelo->registrar($d);
-        $clave = $_SESSION['usuario'] ?? 'SIST0';
+        $clave = $_SESSION['usuario'] ?? null;
 
         $this->bitacora->registrar(
             $clave,
@@ -53,7 +57,7 @@ class TransferenciaControlador {
     // DELETE
     public function eliminar(int $id): void {
         $ok    = $this->modelo->eliminar($id);
-        $clave = $_SESSION['usuario'] ?? 'SIST0';
+        $clave = $_SESSION['usuario'] ?? null;
         $this->bitacora->registrar($clave, $ok ? "Transferencia eliminada ID:{$id}" : "Error al eliminar transferencia ID:{$id}", $ok ? 'C' : 'E');
         $this->json(['ok'=>$ok,'mensaje'=> $ok ? 'Transferencia eliminada.' : 'Error.']);
     }

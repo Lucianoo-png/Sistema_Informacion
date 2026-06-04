@@ -1,7 +1,7 @@
 /* compras.css — estilos específicos de la página compras */
 /* ── Layout split igual que ventas ── */
 body.page-compras .main-content {
-    padding: 18px 368px 24px 32px !important;
+    padding: 18px 400px 24px 32px !important; /* cart=360px + 40px buffer */
     overflow-x: hidden !important;
 }
 .pag-wrap { max-width: none !important; margin: 0 !important; }
@@ -60,7 +60,7 @@ body.page-compras .main-content {
 .cart-fixed {
     position:fixed; top:0; right:0; width:360px; height:100vh;
     background:var(--card-bg); border-left:1px solid var(--border);
-    display:flex; flex-direction:column; z-index:200;
+    display:flex; flex-direction:column; z-index:200; isolation:isolate;
     box-shadow:-2px 0 12px rgba(0,0,0,.07);
 }
 .cart-header { padding:14px 16px 10px; border-bottom:1px solid var(--border);
@@ -74,7 +74,7 @@ body.page-compras .main-content {
 .cart-footer-inner { padding:12px 16px 10px; }
 .cart-total-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
 .cart-total-label { font-size:14px; font-weight:700; }
-.cart-total-val   { font-size:22px; font-weight:800; color:var(--primary); }
+.cart-total-val   { font-size:clamp(14px,3vw,22px); font-weight:800; color:var(--primary); overflow-wrap:anywhere; word-break:break-all; max-width:100%; }
 
 /* ── Items del carrito de compra ── */
 .cart-item  { padding:10px 0; border-bottom:1px solid var(--border); }
@@ -114,7 +114,7 @@ body.page-compras .main-content {
 .mp-sub-box { background:#f5f0eb; border-radius:8px; padding:10px 14px;
               margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
 .mp-sub-box span   { font-size:13px; color:var(--text-muted); }
-.mp-sub-box strong { font-size:20px; font-weight:800; color:var(--primary); }
+.mp-sub-box strong { font-size:clamp(12px,3vw,20px); font-weight:800; color:var(--primary); overflow-wrap:anywhere; word-break:break-all; }
 .mp-hint    { font-size:11px; color:var(--text-muted); text-align:right;
               margin-top:-8px; margin-bottom:10px; }
 .mp-btns { display:flex; gap:10px; }
@@ -127,3 +127,10 @@ body.page-compras .main-content {
 .qty-ctrl { display:flex; align-items:center; gap:4px; }
 .qty-ctrl button { width:26px; height:26px; border-radius:6px; border:1.5px solid var(--border); background:#fff; cursor:pointer; font-size:15px; color:var(--primary); display:flex; align-items:center; justify-content:center; }
 .qty-ctrl span { font-size:13px; font-weight:700; min-width:28px; text-align:center; }
+
+/* ── Botones: toda la superficie clickeable, hijos no interceptan eventos ── */
+button { cursor: pointer; }
+button { pointer-events: auto; }
+button * { pointer-events: none; }
+button:disabled { cursor: not-allowed; opacity: .55; pointer-events: none; }
+button:disabled * { pointer-events: none; }

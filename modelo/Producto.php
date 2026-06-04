@@ -69,48 +69,64 @@ class Producto {
 
     // CREATE
     public function crear(array $d): bool {
-        $stmt = $this->db->prepare(
-            "INSERT INTO productos
-                 (codigoprod, nombre, categoria, precio_compra, precio_venta,
-                  stock, stock_minimo, unidad)
-             VALUES
-                 (:cod, :nombre, :cat, :pc, :pv, :stock, :smin, :unidad)"
-        );
-        return $stmt->execute([
-            ':cod'    => strtoupper(trim($d['codigoprod'])),
-            ':nombre' => $d['nombre'],
-            ':cat'    => $d['categoria']    ?? null,
-            ':pc'     => $d['precio_compra'],
-            ':pv'     => $d['precio_venta'],
-            ':stock'  => (int)($d['stock'] ?? 0),
-            ':smin'   => (int)($d['stock_minimo'] ?? 3),
-            ':unidad' => $d['unidad']       ?? 'pieza',
-        ]);
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO productos
+                     (codigoprod, nombre, categoria, precio_compra, precio_venta,
+                      stock, stock_minimo, unidad, proveedor_sugerido, proveedor_exclusivo)
+                 VALUES
+                     (:cod, :nombre, :cat, :pc, :pv, :stock, :smin, :unidad, :prov, :excl)"
+            );
+            return $stmt->execute([
+                ':cod'    => strtoupper(trim($d['codigoprod'])),
+                ':nombre' => $d['nombre'],
+                ':cat'    => $d['categoria']    ?? null,
+                ':pc'     => $d['precio_compra'],
+                ':pv'     => $d['precio_venta'],
+                ':stock'  => (int)($d['stock'] ?? 0),
+                ':smin'   => (int)($d['stock_minimo'] ?? 3),
+                ':unidad' => $d['unidad']       ?? 'pieza',
+                ':prov'   => !empty($d['proveedor_sugerido']) ? (int)$d['proveedor_sugerido'] : null,
+                ':excl'   => !empty($d['proveedor_exclusivo']),
+            ]);
+        } catch (\PDOException $e) {
+            error_log('Producto::crear — ' . $e->getMessage());
+            return false;
+        }
     }
 
     // UPDATE
     public function actualizar(string $codigo, array $d): bool {
-        $stmt = $this->db->prepare(
-            "UPDATE productos SET
-                 nombre        = :nombre,
-                 categoria     = :cat,
-                 precio_compra = :pc,
-                 precio_venta  = :pv,
-                 stock         = :stock,
-                 stock_minimo  = :smin,
-                 unidad        = :unidad
-             WHERE codigoprod  = :cod"
-        );
-        return $stmt->execute([
-            ':cod'    => $codigo,
-            ':nombre' => $d['nombre'],
-            ':cat'    => $d['categoria']    ?? null,
-            ':pc'     => $d['precio_compra'],
-            ':pv'     => $d['precio_venta'],
-            ':stock'  => (int)($d['stock'] ?? 0),
-            ':smin'   => (int)($d['stock_minimo'] ?? 3),
-            ':unidad' => $d['unidad']       ?? 'pieza',
-        ]);
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE productos SET
+                     nombre             = :nombre,
+                     categoria          = :cat,
+                     precio_compra      = :pc,
+                     precio_venta       = :pv,
+                     stock              = :stock,
+                     stock_minimo       = :smin,
+                     unidad             = :unidad,
+                     proveedor_sugerido = :prov,
+                     proveedor_exclusivo = :excl
+                 WHERE codigoprod       = :cod"
+            );
+            return $stmt->execute([
+                ':cod'    => $codigo,
+                ':nombre' => $d['nombre'],
+                ':cat'    => $d['categoria']    ?? null,
+                ':pc'     => $d['precio_compra'],
+                ':pv'     => $d['precio_venta'],
+                ':stock'  => (int)($d['stock'] ?? 0),
+                ':smin'   => (int)($d['stock_minimo'] ?? 3),
+                ':unidad' => $d['unidad']       ?? 'pieza',
+                ':prov'   => !empty($d['proveedor_sugerido']) ? (int)$d['proveedor_sugerido'] : null,
+                ':excl'   => !empty($d['proveedor_exclusivo']),
+            ]);
+        } catch (\PDOException $e) {
+            error_log('Producto::actualizar — ' . $e->getMessage());
+            return false;
+        }
     }
 
     // UPDATE stock (ventas / compras lo usan internamente)

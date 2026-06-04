@@ -11,8 +11,13 @@ $paginaActual = 'compras';
 $modelo = new Compra();
 
 // Filtros
+$hoy    = date('Y-m-d');
 $desde  = $_GET['desde']  ?? '';
 $hasta  = $_GET['hasta']  ?? '';
+// 6.2.1 Validar fechas recibidas por URL — no futuras, rango coherente
+if ($desde && $desde > $hoy) $desde = $hoy;
+if ($hasta && $hasta > $hoy) $hasta = $hoy;
+if ($desde && $hasta && $hasta < $desde) $hasta = $desde;
 $tipo   = $_GET['tipo']   ?? '';
 
 // Obtener compras con filtro o todas
